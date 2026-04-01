@@ -1,13 +1,12 @@
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 import bcrypt from "bcryptjs";
 
-const sqlite = new Database(process.env.DATABASE_URL ?? "./data/app.db");
-const db = drizzle(sqlite, { schema });
+const sql = neon(process.env.DATABASE_URL!);
+const db = drizzle(sql, { schema });
 
 async function seed() {
-  // Create demo user
   const hashedPassword = await bcrypt.hash("password123", 12);
   await db
     .insert(schema.users)
@@ -24,8 +23,4 @@ async function seed() {
   console.log("Demo account: demo@lockey.app / password123");
 }
 
-seed()
-  .then(() => {
-    sqlite.close();
-  })
-  .catch(console.error);
+seed().catch(console.error);
