@@ -1,30 +1,54 @@
-import { sqliteTable, text, integer, real, primaryKey, blob } from "drizzle-orm/sqlite-core";
+import {
+  pgTable,
+  text,
+  integer,
+  real,
+  serial,
+  boolean,
+  timestamp,
+  primaryKey,
+  customType,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+
+// Custom bytea type for binary photo data
+const bytea = customType<{ data: Buffer; driverData: Buffer | string }>({
+  dataType() {
+    return "bytea";
+  },
+  toDriver(val: Buffer) {
+    return val;
+  },
+  fromDriver(val: Buffer | string): Buffer {
+    if (typeof val === "string") {
+      return Buffer.from(val.replace(/^\\x/, ""), "hex");
+    }
+    return val as Buffer;
+  },
+});
 
 // ─── Users ──────────────────────────────────────────────────────────────────
 
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   email: text("email").notNull().unique(),
   name: text("name"),
-  emailVerified: integer("email_verified", { mode: "timestamp" }),
+  emailVerified: timestamp("email_verified", { mode: "date" }),
   image: text("image"),
   hashedPassword: text("hashed_password"),
   role: text("role").notNull().default("user"),
-  createdAt: integer("created_at", { mode: "timestamp" })
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" })
     .notNull()
-    .default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`)
+    .defaultNow()
     .$onUpdateFn(() => new Date()),
 });
 
 // ─── Auth.js Adapter Tables ─────────────────────────────────────────────────
 
-export const accounts = sqliteTable(
+export const accounts = pgTable(
   "accounts",
   {
     userId: text("user_id")
@@ -46,53 +70,51 @@ export const accounts = sqliteTable(
   })
 );
 
-export const sessions = sqliteTable("sessions", {
+export const sessions = pgTable("sessions", {
   sessionToken: text("session_token").primaryKey(),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  expires: integer("expires", { mode: "timestamp" }).notNull(),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
 });
 
-export const verificationTokens = sqliteTable(
+export const verificationTokens = pgTable(
   "verification_tokens",
   {
     identifier: text("identifier").notNull(),
     token: text("token").notNull(),
-    expires: integer("expires", { mode: "timestamp" }).notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.identifier, t.token] }),
   })
 );
 
-// ─── Photos (stored as BLOB in DB to prevent data loss) ─────────────────────
+// ─── Photos (stored as bytea in DB to prevent data loss) ─────────────────────
 
-export const photos = sqliteTable("photos", {
+export const photos = pgTable("photos", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  data: blob("data", { mode: "buffer" }).notNull(),
+  data: bytea("data").notNull(),
   mimeType: text("mime_type").notNull().default("image/jpeg"),
   size: integer("size").notNull().default(0),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 });
 
 // ─── App Tables ─────────────────────────────────────────────────────────────
 
-export const entries = sqliteTable("entries", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const entries = pgTable("entries", {
+  id: serial("id").primaryKey(),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  photoId: text("photo_id")
-    .references(() => photos.id, { onDelete: "set null" }),
-  // Keep photoUri for backward compat during migration, nullable now
+  photoId: text("photo_id").references(() => photos.id, {
+    onDelete: "set null",
+  }),
   photoUri: text("photo_uri"),
   amount: real("amount").notNull(),
   currency: text("currency").notNull().default("VND"),
@@ -100,22 +122,26 @@ export const entries = sqliteTable("entries", {
   note: text("note").default(""),
   createdAt: text("created_at")
     .notNull()
-    .default(sql`(datetime('now'))`),
+    .default(sql`to_char(timezone('utc', now()), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`),
 });
 
-export const settings = sqliteTable("settings", {
-  key: text("key").notNull(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  value: text("value").notNull(),
-}, (t) => ({
-  pk: primaryKey({ columns: [t.key, t.userId] }),
-}));
+export const settings = pgTable(
+  "settings",
+  {
+    key: text("key").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    value: text("value").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.key, t.userId] }),
+  })
+);
 
 // ─── Subscriptions ──────────────────────────────────────────────────────────
 
-export const subscriptions = sqliteTable("subscriptions", {
+export const subscriptions = pgTable("subscriptions", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
@@ -126,24 +152,22 @@ export const subscriptions = sqliteTable("subscriptions", {
   logoUrl: text("logo_url"),
   amount: real("amount").notNull(),
   currency: text("currency").notNull().default("VND"),
-  cycle: text("cycle").notNull().default("monthly"), // weekly | monthly | yearly
-  nextRenewalDate: text("next_renewal_date").notNull(), // YYYY-MM-DD
+  cycle: text("cycle").notNull().default("monthly"),
+  nextRenewalDate: text("next_renewal_date").notNull(),
   categoryId: text("category_id"),
   note: text("note").default(""),
   reminderDaysBefore: integer("reminder_days_before").notNull().default(3),
-  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
-  createdAt: integer("created_at", { mode: "timestamp" })
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" })
     .notNull()
-    .default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`)
+    .defaultNow()
     .$onUpdateFn(() => new Date()),
 });
 
 // ─── Budgets ────────────────────────────────────────────────────────────────
 
-export const budgets = sqliteTable("budgets", {
+export const budgets = pgTable("budgets", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
@@ -153,20 +177,18 @@ export const budgets = sqliteTable("budgets", {
   categoryId: text("category_id").notNull(),
   monthlyBudget: real("monthly_budget").notNull(),
   currency: text("currency").notNull().default("VND"),
-  isRecurring: integer("is_recurring", { mode: "boolean" }).notNull().default(true),
-  appliedFrom: text("applied_from").notNull(), // YYYY-MM-01
-  createdAt: integer("created_at", { mode: "timestamp" })
+  isRecurring: boolean("is_recurring").notNull().default(true),
+  appliedFrom: text("applied_from").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" })
     .notNull()
-    .default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`)
+    .defaultNow()
     .$onUpdateFn(() => new Date()),
 });
 
 // ─── Streaks ────────────────────────────────────────────────────────────────
 
-export const streaks = sqliteTable("streaks", {
+export const streaks = pgTable("streaks", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
@@ -175,41 +197,39 @@ export const streaks = sqliteTable("streaks", {
     .references(() => users.id, { onDelete: "cascade" }),
   currentStreak: integer("current_streak").notNull().default(0),
   longestStreak: integer("longest_streak").notNull().default(0),
-  lastLoggedDate: text("last_logged_date"), // YYYY-MM-DD
-  updatedAt: integer("updated_at", { mode: "timestamp" })
+  lastLoggedDate: text("last_logged_date"),
+  updatedAt: timestamp("updated_at", { mode: "date" })
     .notNull()
-    .default(sql`(unixepoch())`)
+    .defaultNow()
     .$onUpdateFn(() => new Date()),
 });
 
 // ─── Badges ─────────────────────────────────────────────────────────────────
 
-export const badges = sqliteTable("badges", {
+export const badges = pgTable("badges", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  badgeId: text("badge_id").notNull(), // e.g. "streak_7", "first_expense"
-  earnedAt: integer("earned_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
+  badgeId: text("badge_id").notNull(),
+  earnedAt: timestamp("earned_at", { mode: "date" }).notNull().defaultNow(),
 });
 
 // ─── Wrapped Dismissals ─────────────────────────────────────────────────────
 
-export const wrappedDismissals = sqliteTable("wrapped_dismissals", {
+export const wrappedDismissals = pgTable("wrapped_dismissals", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  monthKey: text("month_key").notNull(), // e.g. "2026-03" (the PREVIOUS month)
-  dismissedAt: integer("dismissed_at", { mode: "timestamp" })
+  monthKey: text("month_key").notNull(),
+  dismissedAt: timestamp("dismissed_at", { mode: "date" })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
 });
 
 // ─── Type Exports ───────────────────────────────────────────────────────────

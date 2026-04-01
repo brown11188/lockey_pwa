@@ -17,7 +17,7 @@ export async function GET() {
       .select({ count: sql<number>`COUNT(*)` })
       .from(entries)
       .where(eq(entries.userId, user.id))
-      .get(),
+      .then((rows) => rows[0]),
   ]);
 
   const levelInfo = getLevelInfo(totalCount?.count ?? 0);

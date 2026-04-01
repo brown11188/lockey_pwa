@@ -47,11 +47,11 @@ const config: NextAuthConfig = {
           .safeParse(credentials);
         if (!parsed.success) return null;
 
-        const user = await db
+        const [user] = await db
           .select()
           .from(users)
           .where(eq(users.email, parsed.data.email.toLowerCase()))
-          .get();
+          .limit(1);
         if (!user?.hashedPassword) return null;
 
         const valid = await bcrypt.compare(

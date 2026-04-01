@@ -28,122 +28,88 @@ export async function GET(req: NextRequest) {
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
+  const dateRange = (start: Date, end: Date) =>
+    sql`(${entries.createdAt})::date >= ${format(start, "yyyy-MM-dd")}::date AND (${entries.createdAt})::date <= ${format(end, "yyyy-MM-dd")}::date`;
+
   // Total spent this week
-  const weekTotal = db
+  const [weekTotalRow] = await db
     .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
     .from(entries)
-    .where(
-      and(
-        userFilter,
-        sql`date(${entries.createdAt}) >= ${format(weekStart, "yyyy-MM-dd")} AND date(${entries.createdAt}) <= ${format(weekEnd, "yyyy-MM-dd")}`
-      )
-    )
-    .get();
+    .where(and(userFilter, dateRange(weekStart, weekEnd)));
 
   // Total spent this month
-  const monthTotal = db
+  const [monthTotalRow] = await db
     .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
     .from(entries)
-    .where(
-      and(
-        userFilter,
-        sql`date(${entries.createdAt}) >= ${format(monthStart, "yyyy-MM-dd")} AND date(${entries.createdAt}) <= ${format(monthEnd, "yyyy-MM-dd")}`
-      )
-    )
-    .get();
+    .where(and(userFilter, dateRange(monthStart, monthEnd)));
 
   // Most expensive category this month
-  const topCategory = db
+  const [topCategory] = await db
     .select({
       category: entries.category,
       total: sql<number>`SUM(${entries.amount})`,
     })
     .from(entries)
-    .where(
-      and(
-        userFilter,
-        sql`date(${entries.createdAt}) >= ${format(monthStart, "yyyy-MM-dd")} AND date(${entries.createdAt}) <= ${format(monthEnd, "yyyy-MM-dd")}`
-      )
-    )
+    .where(and(userFilter, dateRange(monthStart, monthEnd)))
     .groupBy(entries.category)
     .orderBy(sql`SUM(${entries.amount}) DESC`)
-    .limit(1)
-    .get();
+    .limit(1);
 
   // Daily spending for the selected period
   const isWeekView = view === "week";
   const periodStart = isWeekView ? weekStart : monthStart;
   const periodEnd = isWeekView ? weekEnd : monthEnd;
 
-  const dailySpending = db
+  const dailySpendingRows = await db
     .select({
-      date: sql<string>`date(${entries.createdAt})`.as("date"),
+      date: sql<string>`((${entries.createdAt})::date)::text`.as("date"),
       total: sql<number>`SUM(${entries.amount})`.as("total"),
     })
     .from(entries)
-    .where(
-      and(
-        userFilter,
-        sql`date(${entries.createdAt}) >= ${format(periodStart, "yyyy-MM-dd")} AND date(${entries.createdAt}) <= ${format(periodEnd, "yyyy-MM-dd")}`
-      )
-    )
-    .groupBy(sql`date(${entries.createdAt})`)
-    .orderBy(sql`date(${entries.createdAt})`);
+    .where(and(userFilter, dateRange(periodStart, periodEnd)))
+    .groupBy(sql`(${entries.createdAt})::date`)
+    .orderBy(sql`(${entries.createdAt})::date`);
 
-  const dailyMap = new Map(
-    (await dailySpending).map((d) => [d.date, d.total])
+  const dailyMap = new Map(dailySpendingRows.map((d) => [d.date, d.total]));
+
+  const allDays = eachDayOfInterval({ start: periodStart, end: periodEnd }).map(
+    (day) => {
+      const key = format(day, "yyyy-MM-dd");
+      return {
+        date: key,
+        label: format(day, isWeekView ? "EEE" : "d"),
+        total: dailyMap.get(key) ?? 0,
+      };
+    }
   );
 
-  const allDays = eachDayOfInterval({
-    start: periodStart,
-    end: periodEnd,
-  }).map((day) => {
-    const key = format(day, "yyyy-MM-dd");
-    return {
-      date: key,
-      label: format(day, isWeekView ? "EEE" : "d"),
-      total: dailyMap.get(key) ?? 0,
-    };
-  });
-
   // Category breakdown for the selected period
-  const categoryBreakdown = db
+  const categoryBreakdown = await db
     .select({
       category: entries.category,
       total: sql<number>`SUM(${entries.amount})`.as("total"),
       count: sql<number>`COUNT(*)`.as("count"),
     })
     .from(entries)
-    .where(
-      and(
-        userFilter,
-        sql`date(${entries.createdAt}) >= ${format(periodStart, "yyyy-MM-dd")} AND date(${entries.createdAt}) <= ${format(periodEnd, "yyyy-MM-dd")}`
-      )
-    )
+    .where(and(userFilter, dateRange(periodStart, periodEnd)))
     .groupBy(entries.category)
     .orderBy(sql`SUM(${entries.amount}) DESC`);
 
   // Recent transactions (last 10)
-  const recent = db
+  const recentTransactions = await db
     .select()
     .from(entries)
     .where(userFilter)
     .orderBy(desc(entries.createdAt))
     .limit(10);
 
-  const [dailyResult, categoryResult, recentResult] = await Promise.all([
-    allDays,
-    categoryBreakdown,
-    recent,
-  ]);
-
   return NextResponse.json({
-    weekTotal: weekTotal?.total ?? 0,
-    monthTotal: monthTotal?.total ?? 0,
+    weekTotal: weekTotalRow?.total ?? 0,
+    monthTotal: monthTotalRow?.total ?? 0,
     topCategory: topCategory?.category ?? null,
     topCategoryTotal: topCategory?.total ?? 0,
-    dailySpending: dailyResult,
-    categoryBreakdown: categoryResult,
-    recentTransactions: recentResult,
+    dailySpending: allDays,
+    categoryBreakdown,
+    recentTransactions,
   });
 }

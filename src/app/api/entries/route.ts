@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       .where(
         and(
           userFilter,
-          sql`date(${entries.createdAt}) >= ${start} AND date(${entries.createdAt}) <= ${end}`
+          sql`(${entries.createdAt})::date >= ${start}::date AND (${entries.createdAt})::date <= ${end}::date`
         )
       )
       .orderBy(desc(entries.createdAt));
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       .where(
         and(
           userFilter,
-          sql`date(${entries.createdAt}) >= ${start} AND date(${entries.createdAt}) <= ${end}`
+          sql`(${entries.createdAt})::date >= ${start}::date AND (${entries.createdAt})::date <= ${end}::date`
         )
       )
       .orderBy(desc(entries.createdAt));
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     category,
     note: note || "",
     createdAt: createdAt || new Date().toISOString(),
-  });
+  }).returning({ id: entries.id });
 
-  return NextResponse.json({ id: result.lastInsertRowid }, { status: 201 });
+  return NextResponse.json({ id: result[0].id }, { status: 201 });
 }

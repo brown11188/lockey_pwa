@@ -61,7 +61,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           setError("Invalid email or password");
         } else {
           router.push("/gallery");
-          router.refresh();
         }
       } else if (mode === "register") {
         const res = await apiFetch("/api/auth/register", {

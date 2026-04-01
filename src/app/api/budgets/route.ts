@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { budgets, entries } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, or } from "drizzle-orm";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { getSessionUser, unauthorizedResponse } from "@/lib/get-session-user";
 
@@ -16,18 +16,16 @@ export async function GET() {
   const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
 
-  // Get all budgets applicable this month (recurring or specific to this month)
   const allBudgets = await db
     .select()
     .from(budgets)
     .where(
       and(
         eq(budgets.userId, user.id),
-        sql`(${budgets.isRecurring} = 1 OR ${budgets.appliedFrom} = ${monthKey})`
+        or(eq(budgets.isRecurring, true), eq(budgets.appliedFrom, monthKey))
       )
     );
 
-  // Get spending per category this month
   const spending = await db
     .select({
       category: entries.category,
@@ -37,7 +35,7 @@ export async function GET() {
     .where(
       and(
         eq(entries.userId, user.id),
-        sql`date(${entries.createdAt}) >= ${monthStart} AND date(${entries.createdAt}) <= ${monthEnd}`
+        sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`
       )
     )
     .groupBy(entries.category);
@@ -68,17 +66,11 @@ export async function POST(req: NextRequest) {
 
   const monthKey = appliedFrom || format(new Date(), "yyyy-MM-01");
 
-  // Check if budget already exists for this category/month
-  const existing = await db
+  const [existing] = await db
     .select()
     .from(budgets)
-    .where(
-      and(
-        eq(budgets.userId, user.id),
-        eq(budgets.categoryId, categoryId)
-      )
-    )
-    .get();
+    .where(and(eq(budgets.userId, user.id), eq(budgets.categoryId, categoryId)))
+    .limit(1);
 
   if (existing) {
     await db

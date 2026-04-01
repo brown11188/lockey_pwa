@@ -1,7 +1,8 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useEffect } from "react";
 import { OnboardingProvider } from "@/lib/onboarding-context";
 import { Onboarding } from "@/components/onboarding";
 import { BottomTabs } from "@/components/bottom-tabs";
@@ -10,8 +11,15 @@ const AUTH_PATHS = ["/login", "/register", "/reset-password"];
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { status } = useSession();
   const isAuthPage = AUTH_PATHS.some((p) => pathname.startsWith(p));
+
+  useEffect(() => {
+    if (!isAuthPage && status === "unauthenticated") {
+      router.replace("/login");
+    }
+  }, [isAuthPage, status, router]);
 
   // On auth pages, render children directly (no bottom tabs/onboarding)
   if (isAuthPage) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { budgets, entries } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, or } from "drizzle-orm";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { getSessionUser, unauthorizedResponse } from "@/lib/get-session-user";
 
@@ -26,23 +26,23 @@ export async function POST(req: NextRequest) {
   const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
 
-  const budget = await db
+  const [budget] = await db
     .select()
     .from(budgets)
     .where(
       and(
         eq(budgets.userId, user.id),
         eq(budgets.categoryId, categoryId),
-        sql`(${budgets.isRecurring} = 1 OR ${budgets.appliedFrom} = ${monthKey})`
+        or(eq(budgets.isRecurring, true), eq(budgets.appliedFrom, monthKey))
       )
     )
-    .get();
+    .limit(1);
 
   if (!budget) {
     return NextResponse.json({ hasBudget: false });
   }
 
-  const spending = await db
+  const [spending] = await db
     .select({
       total: sql<number>`COALESCE(SUM(${entries.amount}), 0)`.as("total"),
     })
@@ -51,10 +51,9 @@ export async function POST(req: NextRequest) {
       and(
         eq(entries.userId, user.id),
         eq(entries.category, categoryId),
-        sql`date(${entries.createdAt}) >= ${monthStart} AND date(${entries.createdAt}) <= ${monthEnd}`
+        sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`
       )
-    )
-    .get();
+    );
 
   const spent = spending?.total ?? 0;
   const pct = budget.monthlyBudget > 0 ? Math.round((spent / budget.monthlyBudget) * 100) : 0;

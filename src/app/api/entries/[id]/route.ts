@@ -12,16 +12,11 @@ export async function GET(
   if (!user) return unauthorizedResponse();
 
   const { id } = await params;
-  const entry = db
+  const [entry] = await db
     .select()
     .from(entries)
-    .where(
-      and(
-        eq(entries.id, parseInt(id, 10)),
-        eq(entries.userId, user.id)
-      )
-    )
-    .get();
+    .where(and(eq(entries.id, parseInt(id, 10)), eq(entries.userId, user.id)))
+    .limit(1);
 
   if (!entry) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -38,31 +33,23 @@ export async function DELETE(
   if (!user) return unauthorizedResponse();
 
   const { id } = await params;
-  const entry = db
+  const [entry] = await db
     .select()
     .from(entries)
-    .where(
-      and(
-        eq(entries.id, parseInt(id, 10)),
-        eq(entries.userId, user.id)
-      )
-    )
-    .get();
+    .where(and(eq(entries.id, parseInt(id, 10)), eq(entries.userId, user.id)))
+    .limit(1);
 
   if (!entry) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Delete the photo from database if it exists
   if (entry.photoId) {
     await db.delete(photos).where(eq(photos.id, entry.photoId));
   }
 
-  await db.delete(entries).where(
-    and(
-      eq(entries.id, parseInt(id, 10)),
-      eq(entries.userId, user.id)
-    )
-  );
+  await db
+    .delete(entries)
+    .where(and(eq(entries.id, parseInt(id, 10)), eq(entries.userId, user.id)));
+
   return NextResponse.json({ success: true });
 }

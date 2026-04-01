@@ -11,20 +11,13 @@ export async function GET(
 ) {
   try {
     const { filename } = await params;
+    const photoId = filename.replace(/\.[a-zA-Z]+$/, "");
 
-    // The filename is either a UUID (new photos in DB) or an old filesystem name
-    const photoId = filename.replace(/\.[a-zA-Z]+$/, ""); // strip any extension
-
-    // Try to find in database by ID
-    const photo = db
-      .select({
-        data: photos.data,
-        mimeType: photos.mimeType,
-        size: photos.size,
-      })
+    const [photo] = await db
+      .select({ data: photos.data, mimeType: photos.mimeType, size: photos.size })
       .from(photos)
       .where(eq(photos.id, photoId))
-      .get();
+      .limit(1);
 
     if (!photo) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

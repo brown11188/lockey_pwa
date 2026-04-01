@@ -29,7 +29,6 @@ export async function GET(req: NextRequest) {
     year = y;
     month = m;
   } else {
-    // Default: last month (auto-trigger on 1st of month)
     const now = new Date();
     year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
     month = now.getMonth() === 0 ? 12 : now.getMonth();
@@ -38,8 +37,10 @@ export async function GET(req: NextRequest) {
   const { start, end } = getMonthRange(year, month);
   const monthKey = `${year}-${month.toString().padStart(2, "0")}`;
 
+  const dateFilter = sql`(${entries.createdAt})::date >= ${start}::date AND (${entries.createdAt})::date <= ${end}::date`;
+
   // Check if already dismissed
-  const dismissed = await db
+  const [dismissed] = await db
     .select()
     .from(wrappedDismissals)
     .where(
@@ -48,20 +49,18 @@ export async function GET(req: NextRequest) {
         eq(wrappedDismissals.monthKey, monthKey)
       )
     )
-    .get();
+    .limit(1);
 
   const userFilter = eq(entries.userId, user.id);
-  const dateFilter = sql`date(${entries.createdAt}) >= ${start} AND date(${entries.createdAt}) <= ${end}`;
 
   // Total spending this month
-  const totalResult = await db
+  const [totalResult] = await db
     .select({
       total: sql<number>`COALESCE(SUM(${entries.amount}), 0)`,
       count: sql<number>`COUNT(*)`,
     })
     .from(entries)
-    .where(and(userFilter, dateFilter))
-    .get();
+    .where(and(userFilter, dateFilter));
 
   const totalSpending = totalResult?.total ?? 0;
   const entryCount = totalResult?.count ?? 0;
@@ -71,14 +70,13 @@ export async function GET(req: NextRequest) {
   }
 
   // Days with entries
-  const activeDays = await db
-    .select({ count: sql<number>`COUNT(DISTINCT date(${entries.createdAt}))` })
+  const [activeDays] = await db
+    .select({ count: sql<number>`COUNT(DISTINCT (${entries.createdAt})::date)` })
     .from(entries)
-    .where(and(userFilter, dateFilter))
-    .get();
+    .where(and(userFilter, dateFilter));
 
   // Top category
-  const topCategory = await db
+  const [topCategory] = await db
     .select({
       category: entries.category,
       total: sql<number>`SUM(${entries.amount})`,
@@ -88,38 +86,31 @@ export async function GET(req: NextRequest) {
     .where(and(userFilter, dateFilter))
     .groupBy(entries.category)
     .orderBy(sql`SUM(${entries.amount}) DESC`)
-    .limit(1)
-    .get();
+    .limit(1);
 
   // Biggest day
-  const biggestDay = await db
+  const [biggestDay] = await db
     .select({
-      date: sql<string>`date(${entries.createdAt})`.as("day"),
+      date: sql<string>`((${entries.createdAt})::date)::text`.as("day"),
       total: sql<number>`SUM(${entries.amount})`.as("total"),
     })
     .from(entries)
     .where(and(userFilter, dateFilter))
-    .groupBy(sql`date(${entries.createdAt})`)
+    .groupBy(sql`(${entries.createdAt})::date`)
     .orderBy(sql`SUM(${entries.amount}) DESC`)
-    .limit(1)
-    .get();
+    .limit(1);
 
   // Previous month comparison
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
   const prevRange = getMonthRange(prevYear, prevMonth);
-  const prevTotal = await db
+  const prevDateFilter = sql`(${entries.createdAt})::date >= ${prevRange.start}::date AND (${entries.createdAt})::date <= ${prevRange.end}::date`;
+
+  const [prevTotal] = await db
     .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
     .from(entries)
-    .where(
-      and(
-        userFilter,
-        sql`date(${entries.createdAt}) >= ${prevRange.start} AND date(${entries.createdAt}) <= ${prevRange.end}`
-      )
-    )
-    .get();
+    .where(and(userFilter, prevDateFilter));
 
-  // Previous month top change category
   let prevTopChangeCategory: string | null = null;
   if (prevTotal && prevTotal.total > 0) {
     const prevCategories = await db
@@ -128,12 +119,7 @@ export async function GET(req: NextRequest) {
         total: sql<number>`SUM(${entries.amount})`,
       })
       .from(entries)
-      .where(
-        and(
-          userFilter,
-          sql`date(${entries.createdAt}) >= ${prevRange.start} AND date(${entries.createdAt}) <= ${prevRange.end}`
-        )
-      )
+      .where(and(userFilter, prevDateFilter))
       .groupBy(entries.category);
 
     const currentCategories = await db
@@ -157,13 +143,10 @@ export async function GET(req: NextRequest) {
   }
 
   // Food spending (for fun fact)
-  const foodSpending = await db
+  const [foodSpending] = await db
     .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
     .from(entries)
-    .where(
-      and(userFilter, dateFilter, eq(entries.category, "food"))
-    )
-    .get();
+    .where(and(userFilter, dateFilter, eq(entries.category, "food")));
 
   return NextResponse.json({
     hasData: true,
@@ -182,12 +165,7 @@ export async function GET(req: NextRequest) {
           pct: totalSpending > 0 ? Math.round((topCategory.total / totalSpending) * 100) : 0,
         }
       : null,
-    biggestDay: biggestDay
-      ? {
-          date: biggestDay.date,
-          total: biggestDay.total,
-        }
-      : null,
+    biggestDay: biggestDay ? { date: biggestDay.date, total: biggestDay.total } : null,
     comparison: {
       prevTotal: prevTotal?.total ?? 0,
       diff: totalSpending - (prevTotal?.total ?? 0),
@@ -216,8 +194,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "monthKey required" }, { status: 400 });
   }
 
-  // Check if already dismissed
-  const existing = await db
+  const [existing] = await db
     .select()
     .from(wrappedDismissals)
     .where(
@@ -226,13 +203,10 @@ export async function POST(req: NextRequest) {
         eq(wrappedDismissals.monthKey, monthKey)
       )
     )
-    .get();
+    .limit(1);
 
   if (!existing) {
-    await db.insert(wrappedDismissals).values({
-      userId: user.id,
-      monthKey,
-    });
+    await db.insert(wrappedDismissals).values({ userId: user.id, monthKey });
   }
 
   return NextResponse.json({ ok: true });

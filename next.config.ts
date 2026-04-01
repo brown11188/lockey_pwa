@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [],
   },
-  serverExternalPackages: ["better-sqlite3"],
+  serverExternalPackages: [],
   async rewrites() {
     return [
       {

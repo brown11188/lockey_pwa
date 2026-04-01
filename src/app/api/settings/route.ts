@@ -8,11 +8,10 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user) return unauthorizedResponse();
 
-  const rows = db
+  const rows = await db
     .select()
     .from(settings)
-    .where(eq(settings.userId, user.id))
-    .all();
+    .where(eq(settings.userId, user.id));
   const obj: Record<string, string> = {};
   for (const row of rows) {
     obj[row.key] = row.value;
@@ -31,27 +30,17 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "key and value required" }, { status: 400 });
   }
 
-  const existing = db
+  const [existing] = await db
     .select()
     .from(settings)
-    .where(
-      and(
-        eq(settings.key, key),
-        eq(settings.userId, user.id)
-      )
-    )
-    .get();
+    .where(and(eq(settings.key, key), eq(settings.userId, user.id)))
+    .limit(1);
 
   if (existing) {
     await db
       .update(settings)
       .set({ value })
-      .where(
-        and(
-          eq(settings.key, key),
-          eq(settings.userId, user.id)
-        )
-      );
+      .where(and(eq(settings.key, key), eq(settings.userId, user.id)));
   } else {
     await db.insert(settings).values({ key, userId: user.id, value });
   }

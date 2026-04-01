@@ -16,11 +16,11 @@ export async function PUT(
   const { id } = await params;
   const body = await req.json();
 
-  const existing = await db
+  const [existing] = await db
     .select()
     .from(subscriptions)
     .where(and(eq(subscriptions.id, id), eq(subscriptions.userId, user.id)))
-    .get();
+    .limit(1);
 
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
