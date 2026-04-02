@@ -108,7 +108,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950 px-4 safe-top safe-bottom">
       {/* Logo */}
       <div className="mb-8 flex flex-col items-center gap-3">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500 text-3xl font-black text-gray-950 shadow-[0_0_30px_rgba(245,158,11,0.3)]">

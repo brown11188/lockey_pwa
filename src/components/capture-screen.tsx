@@ -126,7 +126,7 @@ export function CaptureScreen({ initialDateTime }: { initialDateTime?: string })
   return (
     <div className="relative flex h-screen flex-col bg-gray-950">
       {/* Header */}
-      <div className="absolute left-0 right-0 top-0 z-10 flex items-center justify-center p-4">
+      <div className="absolute left-0 right-0 top-0 z-10 flex items-center justify-center p-4 safe-top">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-sm font-black text-gray-950">
             L

@@ -59,7 +59,7 @@ export function SettingsScreen() {
   return (
     <div className="min-h-screen bg-gray-950">
       {/* Header */}
-      <div className="sticky top-0 z-20 border-b border-white/5 bg-gray-950/95 backdrop-blur-lg">
+      <div className="sticky top-0 z-20 border-b border-white/5 bg-gray-950/95 backdrop-blur-lg safe-top">
         <div className="flex items-center gap-3 px-4 py-3">
           <button
             type="button"

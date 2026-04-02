@@ -126,7 +126,7 @@ export function SubscriptionsScreen() {
   return (
     <div className="min-h-screen bg-gray-950 pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-20 border-b border-white/5 bg-gray-950/95 backdrop-blur-lg">
+      <div className="sticky top-0 z-20 border-b border-white/5 bg-gray-950/95 backdrop-blur-lg safe-top">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-xl font-bold text-white">{t.subscriptions.title}</h1>
           <div className="flex items-center gap-2">
