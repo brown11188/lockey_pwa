@@ -143,8 +143,17 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
             <label className="mb-1.5 block text-sm font-medium text-gray-400">{t.subscriptions.serviceName}</label>
             <div className="flex items-center gap-3">
               {matchedLogo && (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xl">
-                  {matchedLogo}
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xl overflow-hidden">
+                  {matchedLogo.startsWith("http") ? (
+                    <img
+                      src={matchedLogo}
+                      alt={name}
+                      className="h-7 w-7 object-contain"
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    />
+                  ) : (
+                    matchedLogo
+                  )}
                 </div>
               )}
               <input
@@ -164,7 +173,13 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
                     onClick={() => selectSuggestion(s)}
                     className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-white hover:bg-white/5"
                   >
-                    <span className="text-lg">{s.logo}</span>
+                    <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-md bg-white/10">
+                      {s.logo.startsWith("http") ? (
+                        <img src={s.logo} alt={s.name} className="h-5 w-5 object-contain" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                      ) : (
+                        <span className="text-sm">{s.logo}</span>
+                      )}
+                    </span>
                     <span>{s.name}</span>
                   </button>
                 ))}
