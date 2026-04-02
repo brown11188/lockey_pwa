@@ -5,7 +5,6 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useCurrency } from "@/lib/currency-context";
 import { useLanguage } from "@/lib/language-context";
-import { formatCurrency } from "@/lib/format";
 import { SubscriptionCard } from "@/components/subscription-card";
 import { SubscriptionFormModal, type SubscriptionFormData } from "@/components/subscription-form-modal";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -16,6 +15,7 @@ import {
   CreditCard as CreditCardIcon,
   Calendar as CalendarIcon,
 } from "lucide-react";
+import { SubscriptionOverview } from "@/components/subscription-overview";
 import type { Subscription } from "@/db/schema";
 
 function getDaysUntilRenewal(dateStr: string): number {
@@ -26,17 +26,6 @@ function getDaysUntilRenewal(dateStr: string): number {
   return Math.ceil((renewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function calcMonthlyEquivalent(amount: number, cycle: string): number {
-  if (cycle === "weekly") return amount * (52 / 12);
-  if (cycle === "yearly") return amount / 12;
-  return amount;
-}
-
-function calcYearlyEquivalent(amount: number, cycle: string): number {
-  if (cycle === "weekly") return amount * 52;
-  if (cycle === "monthly") return amount * 12;
-  return amount;
-}
 
 export function SubscriptionsScreen() {
   const { currency } = useCurrency();
@@ -62,17 +51,6 @@ export function SubscriptionsScreen() {
   useEffect(() => {
     fetchSubs();
   }, [fetchSubs]);
-
-  const activeSubs = useMemo(() => subs.filter((s) => s.isActive), [subs]);
-
-  const totalMonthly = useMemo(
-    () => activeSubs.reduce((sum, s) => sum + calcMonthlyEquivalent(s.amount, s.cycle), 0),
-    [activeSubs]
-  );
-  const totalYearly = useMemo(
-    () => activeSubs.reduce((sum, s) => sum + calcYearlyEquivalent(s.amount, s.cycle), 0),
-    [activeSubs]
-  );
 
   const upcomingSubs = useMemo(
     () =>
@@ -192,26 +170,8 @@ export function SubscriptionsScreen() {
         </div>
       ) : (
         <div className="px-4 pt-4 space-y-6">
-          {/* Summary card */}
-          <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-transparent p-5">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <CreditCardIcon className="h-4 w-4 text-amber-400" />
-              {t.subscriptions.totalLabel}
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-white">
-                {formatCurrency(Math.round(totalMonthly), currency)}
-              </span>
-              <span className="text-sm text-gray-500">{t.subscriptions.perMonth}</span>
-              <span className="text-sm text-gray-600">•</span>
-              <span className="text-sm text-gray-500">
-                {formatCurrency(Math.round(totalYearly), currency)}{t.subscriptions.perYear}
-              </span>
-            </div>
-            <div className="mt-1 text-xs text-gray-500">
-              {t.subscriptions.activeCount.replace("{count}", String(activeSubs.length))}
-            </div>
-          </div>
+          {/* Overview charts */}
+          <SubscriptionOverview subscriptions={subs} currency={currency} />
 
           {/* Upcoming renewals */}
           {upcomingSubs.length > 0 && (
