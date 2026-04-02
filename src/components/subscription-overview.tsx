@@ -334,7 +334,7 @@ export function SubscriptionOverview({ subscriptions, currency }: Props) {
               content={(props) => (
                 <BubbleTooltip
                   active={props.active}
-                  payload={props.payload as { payload: BubbleDatum }[] | undefined}
+                  payload={props.payload as unknown as { payload: BubbleDatum }[] | undefined}
                 />
               )}
             />
