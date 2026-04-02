@@ -36,7 +36,10 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/reset-password");
   const isAdminPage = pathname.startsWith("/admin");
 
-  if (isAuthPage && token) return redirectTo(req, "/gallery");
+  if (isAuthPage && token) {
+    const role = (token as { role?: string }).role;
+    return redirectTo(req, role === "admin" ? "/admin" : "/gallery");
+  }
   if (!isAuthPage && !token) return redirectTo(req, "/login");
   if (isAdminPage && token && (token as { role?: string }).role !== "admin") {
     return redirectTo(req, "/gallery");
