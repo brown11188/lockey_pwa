@@ -38,6 +38,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
   const [name, setName] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState(defaultCurrency);
   const [cycle, setCycle] = useState<Cycle>("monthly");
   const [nextRenewalDate, setNextRenewalDate] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -53,6 +54,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
         setName(initial.name);
         setLogoUrl(initial.logoUrl);
         setAmount(String(initial.amount));
+        setCurrency(initial.currency || defaultCurrency);
         setCycle(initial.cycle as Cycle);
         setNextRenewalDate(initial.nextRenewalDate);
         setCategoryId(initial.categoryId || "");
@@ -63,6 +65,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
         setName("");
         setLogoUrl(null);
         setAmount("");
+        setCurrency(defaultCurrency);
         setCycle("monthly");
         setNextRenewalDate("");
         setCategoryId("");
@@ -100,7 +103,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
       name: name.trim(),
       logoUrl,
       amount,
-      currency: defaultCurrency,
+      currency,
       cycle,
       nextRenewalDate,
       categoryId: categoryId || null as unknown as string,
@@ -108,7 +111,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
       reminderDaysBefore,
       isActive,
     });
-  }, [name, logoUrl, amount, defaultCurrency, cycle, nextRenewalDate, categoryId, note, reminderDaysBefore, isActive, onSave]);
+  }, [name, logoUrl, amount, currency, cycle, nextRenewalDate, categoryId, note, reminderDaysBefore, isActive, onSave]);
 
   const matchedLogo = useMemo(() => {
     if (logoUrl) return logoUrl;
@@ -169,17 +172,40 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
             )}
           </div>
 
-          {/* Amount */}
+          {/* Amount + Currency toggle */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-400">{t.subscriptions.amount}</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xl font-bold text-amber-400 placeholder:text-gray-600 focus:border-amber-500/50 focus:outline-none"
-            />
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-400">{t.subscriptions.amount}</label>
+              <div className="flex rounded-lg border border-white/10 bg-white/5 p-0.5 gap-0.5">
+                {(["VND", "USD"] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCurrency(c)}
+                    className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
+                      currency === c
+                        ? "bg-amber-500 text-gray-950 shadow-sm"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-gray-500">
+                {currency === "VND" ? "₫" : "$"}
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+                className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-xl font-bold text-amber-400 placeholder:text-gray-600 focus:border-amber-500/50 focus:outline-none"
+              />
+            </div>
           </div>
 
           {/* Cycle */}

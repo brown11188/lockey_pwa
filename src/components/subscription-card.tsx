@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { useCurrency } from "@/lib/currency-context";
 import { useLanguage } from "@/lib/language-context";
 import { formatCurrency } from "@/lib/format";
 import { getCategoryInfo } from "@/lib/constants";
@@ -24,7 +23,6 @@ export function SubscriptionCard({
   onDelete,
   highlighted = false,
 }: SubscriptionCardProps) {
-  const { currency } = useCurrency();
   const { t } = useLanguage();
 
   const logo = useMemo(() => {
@@ -67,7 +65,7 @@ export function SubscriptionCard({
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-white truncate">{subscription.name}</h3>
             <span className="shrink-0 text-sm font-bold text-amber-400">
-              {formatCurrency(subscription.amount, currency)}
+              {formatCurrency(subscription.amount, subscription.currency)}
             </span>
           </div>
           <div className="flex items-center gap-2 mt-1">

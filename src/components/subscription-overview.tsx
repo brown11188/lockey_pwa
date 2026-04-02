@@ -91,10 +91,10 @@ interface BubbleDatum {
 
 interface Props {
   subscriptions: Subscription[];
-  currency: string;
+  currency?: string; // kept for legacy compat, totals are now per-subscription currency
 }
 
-export function SubscriptionOverview({ subscriptions, currency }: Props) {
+export function SubscriptionOverview({ subscriptions }: Props) {
   const active = useMemo(() => subscriptions.filter((s) => s.isActive), [subscriptions]);
 
   const planets = useMemo<Planet[]>(() => {
@@ -127,10 +127,21 @@ export function SubscriptionOverview({ subscriptions, currency }: Props) {
     });
   }, [active]);
 
-  const totalMonthly = useMemo(
-    () => active.reduce((sum, s) => sum + calcMonthly(s.amount, s.cycle), 0),
-    [active]
-  );
+  // Group monthly totals by currency (handle mixed VND/USD)
+  const totalsByCurrency = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const s of active) {
+      map[s.currency] = (map[s.currency] || 0) + calcMonthly(s.amount, s.cycle);
+    }
+    return Object.entries(map); // [[currency, total], ...]
+  }, [active]);
+
+  // Dominant currency = currency with most subscriptions (for chart axes)
+  const dominantCurrency = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const s of active) counts[s.currency] = (counts[s.currency] || 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "VND";
+  }, [active]);
 
   const bubbleData = useMemo<BubbleDatum[]>(
     () =>
@@ -215,25 +226,35 @@ export function SubscriptionOverview({ subscriptions, currency }: Props) {
               stroke="rgba(245,158,11,0.2)"
               strokeWidth="1.5"
             />
-            <text
-              x={C}
-              y={C - 7}
-              textAnchor="middle"
-              fill="white"
-              fontSize="10"
-              fontWeight="700"
-            >
-              {shortAmount(Math.round(totalMonthly), currency)}
-            </text>
-            <text
-              x={C}
-              y={C + 8}
-              textAnchor="middle"
-              fill="rgba(156,163,175,0.8)"
-              fontSize="7.5"
-            >
-              per month
-            </text>
+            {totalsByCurrency.length === 1 ? (
+              <>
+                <text x={C} y={C - 7} textAnchor="middle" fill="white" fontSize="10" fontWeight="700">
+                  {shortAmount(Math.round(totalsByCurrency[0][1]), totalsByCurrency[0][0])}
+                </text>
+                <text x={C} y={C + 8} textAnchor="middle" fill="rgba(156,163,175,0.8)" fontSize="7.5">
+                  per month
+                </text>
+              </>
+            ) : (
+              <>
+                {totalsByCurrency.map(([cur, total], i) => (
+                  <text
+                    key={cur}
+                    x={C}
+                    y={C - 11 + i * 13}
+                    textAnchor="middle"
+                    fill={i === 0 ? "white" : "rgba(251,191,36,0.9)"}
+                    fontSize="9"
+                    fontWeight="700"
+                  >
+                    {shortAmount(Math.round(total), cur)}
+                  </text>
+                ))}
+                <text x={C} y={C + 16} textAnchor="middle" fill="rgba(156,163,175,0.8)" fontSize="7">
+                  per month
+                </text>
+              </>
+            )}
 
             {/* Orbiting planets */}
             {planets.map((p) => (
@@ -285,7 +306,7 @@ export function SubscriptionOverview({ subscriptions, currency }: Props) {
                 />
                 <span className="flex-1 truncate text-xs text-gray-400">{p.name}</span>
                 <span className="flex-shrink-0 text-xs font-semibold text-white">
-                  {shortAmount(Math.round(p.monthly), currency)}
+                  {shortAmount(Math.round(p.monthly), p.currency)}
                 </span>
               </div>
             ))}
@@ -326,7 +347,7 @@ export function SubscriptionOverview({ subscriptions, currency }: Props) {
               axisLine={false}
               tickLine={false}
               width={64}
-              tickFormatter={(v) => shortAmount(v, currency)}
+              tickFormatter={(v) => shortAmount(v, dominantCurrency)}
             />
             <ZAxis type="number" dataKey="z" range={[120, 900]} />
             <Tooltip
