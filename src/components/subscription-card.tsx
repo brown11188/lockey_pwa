@@ -56,19 +56,19 @@ export function SubscriptionCard({
     >
       <div className="flex items-center gap-3">
         {/* Logo */}
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xl overflow-hidden">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white/10">
           {logo.startsWith("http") ? (
             <img
               src={logo}
               alt={subscription.name}
-              className="h-7 w-7 object-contain"
+              className="h-8 w-8 object-contain"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
-                e.currentTarget.parentElement!.textContent = "💳";
+                (e.currentTarget.parentElement as HTMLElement).innerText = "💳";
               }}
             />
           ) : (
-            logo
+            <span className="text-xl">{logo}</span>
           )}
         </div>
 
