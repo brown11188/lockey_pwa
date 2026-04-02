@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { X as XIcon, Loader as LoaderIcon, Camera as CameraIcon } from "lucide-react";
 import { Numpad } from "@/components/numpad";
 import { CategoryPicker } from "@/components/category-picker";
@@ -19,9 +19,10 @@ interface QuickAddModalProps {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
+  initialDate?: string; // YYYY-MM-DD — pre-fills the date picker when set
 }
 
-export function QuickAddModal({ open, onClose, onSaved }: QuickAddModalProps) {
+export function QuickAddModal({ open, onClose, onSaved, initialDate }: QuickAddModalProps) {
   const { currency } = useCurrency();
   const { t } = useLanguage();
   const { checkBudget } = useBudgetAlert();
@@ -53,6 +54,17 @@ export function QuickAddModal({ open, onClose, onSaved }: QuickAddModalProps) {
     setTimeout(() => setVisible(false), 300);
   }
   prevOpenRef.current = open;
+
+  // Seed the date picker whenever the modal opens
+  useEffect(() => {
+    if (open) {
+      if (initialDate) {
+        setDateTime(toLocalDateTimeString(new Date(`${initialDate}T12:00:00`)));
+      } else {
+        setDateTime(toLocalDateTimeString(new Date()));
+      }
+    }
+  }, [open, initialDate]);
 
   const formatDisplay = useCallback(
     (raw: string): string => {

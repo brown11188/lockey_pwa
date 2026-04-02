@@ -27,6 +27,7 @@ export function GalleryScreen() {
   const [deleteConfirm, setDeleteConfirm] = useState<Entry | null>(null);
   const [selectedDate, setSelectedDate] = useState(getDateOnly(new Date().toISOString()));
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddDate, setQuickAddDate] = useState<string | undefined>(undefined);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [wrappedData, setWrappedData] = useState<WrappedData | null>(null);
   const [showWrapped, setShowWrapped] = useState(false);
@@ -115,8 +116,18 @@ export function GalleryScreen() {
     [entries, selectedDate]
   );
 
+  const handleDateSelect = useCallback((dateKey: string) => {
+    setSelectedDate(dateKey);
+    const hasEntries = entries.some((e) => getDateOnly(e.createdAt) === dateKey);
+    if (!hasEntries) {
+      setQuickAddDate(dateKey);
+      setQuickAddOpen(true);
+    }
+  }, [entries]);
+
   const handleQuickAddSaved = useCallback(() => {
     setQuickAddOpen(false);
+    setQuickAddDate(undefined);
     fetchEntries();
     // Refresh streak
     apiFetch("/api/streak")
@@ -175,7 +186,7 @@ export function GalleryScreen() {
             markedDates={markedDates}
             selectedEntries={selectedEntries}
             allEntries={entries}
-            onSelectDate={setSelectedDate}
+            onSelectDate={handleDateSelect}
             onSelectEntry={setSelectedEntry}
             onDeleteEntry={setDeleteConfirm}
           />
@@ -224,8 +235,9 @@ export function GalleryScreen() {
       {/* Quick-Add Modal */}
       <QuickAddModal
         open={quickAddOpen}
-        onClose={() => setQuickAddOpen(false)}
+        onClose={() => { setQuickAddOpen(false); setQuickAddDate(undefined); }}
         onSaved={handleQuickAddSaved}
+        initialDate={quickAddDate}
       />
 
       {selectedEntry ? <EntryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} onDelete={setDeleteConfirm} /> : null}

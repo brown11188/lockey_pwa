@@ -199,13 +199,13 @@ export function MonthCalendar({ value, onChange, markedDates, dayMeta }: MonthCa
                   >
                     {day}
                   </span>
-                  {/* Count badge when multiple photos */}
-                  {photos.length > 1 && (
+                  {/* Count badge — shows total entry count for the day */}
+                  {(meta?.count ?? 0) > 1 && (
                     <span
                       className="absolute bottom-1 right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-black/70 px-0.5 text-[7px] font-bold text-white backdrop-blur-sm"
                       style={{ zIndex: 5 }}
                     >
-                      {photos.length}
+                      {meta!.count}
                     </span>
                   )}
                   {/* Selected amber ring */}
