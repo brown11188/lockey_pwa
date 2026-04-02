@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Loader as LoaderIcon, Check as CheckIcon, Sparkles as SparklesIcon } from "lucide-react";
 import { BottomSheet } from "@/components/bottom-sheet";
-import { CategoryPicker } from "@/components/category-picker";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Toast, triggerHaptic } from "@/components/toast";
 import { DateTimePicker } from "@/components/datetime-picker";
@@ -16,6 +15,24 @@ import { toLocalDateTimeString, parseLocalDateTimeString } from "@/lib/format";
 import { useBudgetAlert } from "@/hooks/use-budget-alert";
 import { useOcr } from "@/hooks/use-ocr";
 import { cn } from "@/lib/utils";
+import { CATEGORIES } from "@/lib/constants";
+
+// Per-category accent colors
+const CAT_COLORS: Record<string, { pill: string; ring: string; glow: string }> = {
+  food:          { pill: "bg-orange-500/20 text-orange-300 border-orange-500/40",  ring: "ring-orange-400/60",  glow: "shadow-orange-500/20" },
+  transport:     { pill: "bg-blue-500/20 text-blue-300 border-blue-500/40",        ring: "ring-blue-400/60",    glow: "shadow-blue-500/20" },
+  shopping:      { pill: "bg-pink-500/20 text-pink-300 border-pink-500/40",        ring: "ring-pink-400/60",    glow: "shadow-pink-500/20" },
+  health:        { pill: "bg-green-500/20 text-green-300 border-green-500/40",     ring: "ring-green-400/60",   glow: "shadow-green-500/20" },
+  housing:       { pill: "bg-purple-500/20 text-purple-300 border-purple-500/40",  ring: "ring-purple-400/60",  glow: "shadow-purple-500/20" },
+  entertainment: { pill: "bg-red-500/20 text-red-300 border-red-500/40",           ring: "ring-red-400/60",     glow: "shadow-red-500/20" },
+  education:     { pill: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40",  ring: "ring-indigo-400/60",  glow: "shadow-indigo-500/20" },
+  travel:        { pill: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",        ring: "ring-cyan-400/60",    glow: "shadow-cyan-500/20" },
+  work:          { pill: "bg-slate-500/20 text-slate-300 border-slate-500/40",     ring: "ring-slate-400/60",   glow: "shadow-slate-500/20" },
+  gifts:         { pill: "bg-rose-500/20 text-rose-300 border-rose-500/40",        ring: "ring-rose-400/60",    glow: "shadow-rose-500/20" },
+  bills:         { pill: "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",  ring: "ring-yellow-400/60",  glow: "shadow-yellow-500/20" },
+  pets:          { pill: "bg-amber-500/20 text-amber-300 border-amber-500/40",     ring: "ring-amber-400/60",   glow: "shadow-amber-500/20" },
+  other:         { pill: "bg-gray-500/20 text-gray-300 border-gray-500/40",        ring: "ring-gray-400/60",    glow: "shadow-gray-500/20" },
+};
 
 interface ExpenseBottomSheetProps {
   open: boolean;
@@ -185,97 +202,115 @@ export function ExpenseBottomSheet({
         confirmClose={true}
         onRequestClose={handleRequestClose}
       >
-        <div className="px-4 pb-8 pt-1">
-          {/* Photo thumbnail + amount row */}
-          <div className="flex items-start gap-4">
-            <img
-              src={photoPreview}
-              alt="Captured"
-              className="h-20 w-20 flex-shrink-0 rounded-xl object-cover"
-            />
-            <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-gray-500">
-                {t.capture.amount} ({currency === "VND" ? "\u20AB" : "$"})
-              </label>
-              <div className="relative">
-                <input
-                  ref={amountRef}
-                  type="text"
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(e) => formatAmountInput(e.target.value)}
-                  placeholder={currency === "VND" ? "50,000" : "25.00"}
-                  className={cn(
-                    "w-full rounded-xl border bg-white/5 px-4 py-3 text-2xl font-bold placeholder:text-gray-600 focus:outline-none focus:ring-1",
-                    scanning
-                      ? "animate-pulse border-amber-500/30 text-gray-600 focus:border-amber-500/50 focus:ring-amber-500/50"
-                      : autoFilled
-                        ? "border-amber-500/50 text-amber-400 focus:border-amber-500/50 focus:ring-amber-500/50"
-                        : "border-white/10 text-amber-400 focus:border-amber-500/50 focus:ring-amber-500/50"
-                  )}
-                />
-                {scanning && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <LoaderIcon className="h-4 w-4 animate-spin text-amber-400" />
-                  </div>
-                )}
-              </div>
+        <div className="px-4 pb-6 pt-2">
+          {/* ── Hero: photo + amount ─────────────────────────── */}
+          <div className="flex flex-col items-center pb-5 pt-1">
+            {/* Photo with category-colored ring */}
+            <div className={cn(
+              "relative mb-4 h-20 w-20 overflow-hidden rounded-2xl ring-2 ring-offset-2 ring-offset-gray-900 shadow-xl transition-all duration-300",
+              (CAT_COLORS[category] ?? CAT_COLORS.other).ring,
+              (CAT_COLORS[category] ?? CAT_COLORS.other).glow,
+            )}>
+              <img src={photoPreview} alt="Captured" className="h-full w-full object-cover" />
               {scanning && (
-                <p className="mt-1 text-xs text-amber-400/60">{t.ocr.scanning}</p>
-              )}
-              {autoFilled && !scanning && (
-                <p className="mt-1 flex items-center gap-1 text-xs text-amber-400/80">
-                  <SparklesIcon className="h-3 w-3" />
-                  {t.ocr.autoFilled}
-                </p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60">
+                  <LoaderIcon className="h-5 w-5 animate-spin text-amber-400" />
+                  <span className="text-[9px] font-semibold text-amber-400">SCANNING</span>
+                </div>
               )}
             </div>
+
+            {/* Big amount input */}
+            <div className="flex items-center gap-1.5">
+              <span className={cn(
+                "text-2xl font-black transition-colors duration-300",
+                amount ? "text-white/40" : "text-white/20"
+              )}>
+                {currency === "VND" ? "₫" : "$"}
+              </span>
+              <input
+                ref={amountRef}
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => formatAmountInput(e.target.value)}
+                placeholder={currency === "VND" ? "0" : "0.00"}
+                className={cn(
+                  "w-52 bg-transparent text-center text-5xl font-black tracking-tight placeholder:text-white/15 focus:outline-none transition-all duration-200",
+                  scanning ? "animate-pulse text-amber-400/40" : amount ? "text-white" : "text-white/20"
+                )}
+              />
+            </div>
+
+            {/* Sub-label */}
+            <p className="mt-1.5 text-xs font-medium text-gray-600">
+              {scanning
+                ? <span className="flex items-center gap-1 text-amber-400/70"><LoaderIcon className="h-3 w-3 animate-spin" />{t.ocr.scanning}</span>
+                : autoFilled
+                  ? <span className="flex items-center gap-1 text-amber-400/80"><SparklesIcon className="h-3 w-3" />{t.ocr.autoFilled}</span>
+                  : "tap amount to edit"}
+            </p>
           </div>
 
-          {error && (
-            <div className="mt-3 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-2 text-sm text-red-400">
-              {error}
-            </div>
-          )}
-
-          {/* Category picker */}
-          <div className="mt-4">
-            <label className="mb-1.5 block text-xs font-medium text-gray-500">
+          {/* ── Category chips ───────────────────────────────── */}
+          <div className="-mx-4 px-4">
+            <p className="mb-2.5 text-[10px] font-bold uppercase tracking-widest text-gray-600">
               {t.capture.category}
-            </label>
-            <CategoryPicker
-              value={category}
-              onChange={setCategory}
-              translations={t.categories}
-              layout="scroll"
-            />
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-webkit-overflow-scrolling:touch]">
+              {CATEGORIES.map((cat) => {
+                const selected = category === cat.value;
+                const colors = CAT_COLORS[cat.value] ?? CAT_COLORS.other;
+                return (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    onClick={() => setCategory(cat.value)}
+                    className={cn(
+                      "flex shrink-0 flex-col items-center gap-1 rounded-2xl border px-3 py-2 text-[10px] font-bold uppercase tracking-wide transition-all duration-200",
+                      selected
+                        ? cn(colors.pill, "scale-105 shadow-lg")
+                        : "border-white/5 bg-white/5 text-gray-600 hover:border-white/10 hover:text-gray-400"
+                    )}
+                  >
+                    <span className="text-lg leading-none">{cat.emoji}</span>
+                    <span>{t.categories[cat.labelKey]}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Note */}
-          <div className="mt-4">
+          {/* ── Note ────────────────────────────────────────── */}
+          <div className="relative mt-4">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base select-none">✍️</span>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={t.capture.notePlaceholder}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-gray-600 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+              className="w-full rounded-2xl border border-white/8 bg-white/5 py-3 pl-9 pr-4 text-sm text-white placeholder:text-gray-600 focus:border-white/20 focus:outline-none focus:ring-0 transition-colors"
             />
           </div>
 
-          {/* Date/Time */}
-          <div className="mt-4">
-            <label className="mb-1.5 block text-xs font-medium text-gray-500">
-              {t.capture.dateTime}
-            </label>
+          {/* ── Date / Time ──────────────────────────────────── */}
+          <div className="mt-3">
             <DateTimePicker value={dateTime} onChange={setDateTime} />
           </div>
 
-          {/* Actions */}
-          <div className="mt-6 flex gap-3">
+          {/* ── Error ───────────────────────────────────────── */}
+          {error && (
+            <div className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              {error}
+            </div>
+          )}
+
+          {/* ── Actions ─────────────────────────────────────── */}
+          <div className="mt-5 flex gap-2.5">
             <button
               type="button"
               onClick={handleRequestClose}
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 py-3.5 text-sm font-medium text-gray-300 transition-all hover:bg-white/10"
+              className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3.5 text-sm font-semibold text-gray-400 transition-all hover:bg-white/10 active:scale-95"
             >
               {t.common.cancel}
             </button>
@@ -283,13 +318,9 @@ export function ExpenseBottomSheet({
               type="button"
               onClick={handleSave}
               disabled={saving || !amount}
-              className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-amber-500 py-3.5 font-bold text-gray-950 transition-all hover:bg-amber-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-400 py-3.5 text-sm font-black text-gray-950 shadow-lg shadow-amber-500/25 transition-all hover:shadow-amber-500/40 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {saving ? (
-                <LoaderIcon className="h-4 w-4 animate-spin" />
-              ) : (
-                <CheckIcon className="h-4 w-4" />
-              )}
+              {saving ? <LoaderIcon className="h-4 w-4 animate-spin" /> : <CheckIcon className="h-5 w-5" />}
               {saving ? t.common.saving : t.capture.saveEntry}
             </button>
           </div>
