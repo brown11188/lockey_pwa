@@ -28,6 +28,12 @@ function calcMonthly(amount: number, cycle: string): number {
   return amount;
 }
 
+// Normalize to USD for cross-currency comparison (sizing, chart axes)
+const VND_TO_USD = 25000;
+function toUSD(amount: number, currency: string): number {
+  return currency === "VND" ? amount / VND_TO_USD : amount;
+}
+
 function shortAmount(amount: number, currency: string): string {
   if (currency === "VND") {
     if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M₫`;
@@ -57,8 +63,11 @@ function BubbleTooltip({ active, payload }: { active?: boolean; payload?: { payl
       </div>
       <p className="text-gray-400 capitalize">{d.cycle} · renews day {d.x}</p>
       <p className="mt-1 font-semibold text-amber-400">
-        {formatCurrency(Math.round(d.y), d.currency)}<span className="text-gray-500 font-normal">/mo</span>
+        {formatCurrency(d.amount, d.currency)}<span className="text-gray-500 font-normal">/{d.cycle === "yearly" ? "yr" : d.cycle === "weekly" ? "wk" : "mo"}</span>
       </p>
+      {d.currency !== "USD" && (
+        <p className="text-[10px] text-gray-500">≈ ${d.y.toFixed(2)}/mo USD</p>
+      )}
     </div>
   );
 }
@@ -66,7 +75,8 @@ function BubbleTooltip({ active, payload }: { active?: boolean; payload?: { payl
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Planet extends Subscription {
-  monthly: number;
+  monthly: number;     // original monthly cost in subscription's own currency (for display)
+  monthlyUSD: number;  // USD-normalized monthly cost (for sizing & sorting)
   orbitIdx: number;
   startAngle: number;
   radius: number;
@@ -78,13 +88,14 @@ interface Planet extends Subscription {
 
 interface BubbleDatum {
   x: number;
-  y: number;
-  z: number;
+  y: number;        // USD-normalized monthly (for axis positioning)
+  z: number;        // USD-normalized monthly (for bubble size)
   name: string;
   color: string;
   cycle: string;
-  amount: number;
-  currency: string;
+  amount: number;   // original amount (for tooltip display)
+  currency: string; // original currency (for tooltip display)
+  monthly: number;  // original monthly in own currency (for tooltip display)
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -100,9 +111,13 @@ export function SubscriptionOverview({ subscriptions }: Props) {
   const planets = useMemo<Planet[]>(() => {
     if (!active.length) return [];
     const sorted = [...active]
-      .map((s) => ({ ...s, monthly: calcMonthly(s.amount, s.cycle) }))
-      .sort((a, b) => b.monthly - a.monthly);
-    const maxMonthly = Math.max(...sorted.map((s) => s.monthly));
+      .map((s) => ({
+        ...s,
+        monthly: calcMonthly(s.amount, s.cycle),
+        monthlyUSD: toUSD(calcMonthly(s.amount, s.cycle), s.currency),
+      }))
+      .sort((a, b) => b.monthlyUSD - a.monthlyUSD); // sort by USD value
+    const maxMonthlyUSD = Math.max(...sorted.map((s) => s.monthlyUSD));
 
     // bucket into 3 orbit rings by index mod 3
     const buckets: number[][] = [[], [], []];
@@ -120,7 +135,7 @@ export function SubscriptionOverview({ subscriptions }: Props) {
         startAngle,
         radius: ORBIT_RADII[orbitIdx],
         speed: ORBIT_SPEEDS[orbitIdx],
-        size: 7 + (sub.monthly / maxMonthly) * 13,
+        size: 7 + (sub.monthlyUSD / maxMonthlyUSD) * 13, // size by USD value
         color: PALETTE[gi % PALETTE.length],
         logo,
       };
@@ -136,24 +151,18 @@ export function SubscriptionOverview({ subscriptions }: Props) {
     return Object.entries(map); // [[currency, total], ...]
   }, [active]);
 
-  // Dominant currency = currency with most subscriptions (for chart axes)
-  const dominantCurrency = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const s of active) counts[s.currency] = (counts[s.currency] || 0) + 1;
-    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "VND";
-  }, [active]);
-
   const bubbleData = useMemo<BubbleDatum[]>(
     () =>
       planets.map((p) => ({
         x: new Date(p.nextRenewalDate + "T00:00:00").getDate(),
-        y: Math.round(p.monthly),
-        z: Math.round(p.monthly),
+        y: parseFloat(p.monthlyUSD.toFixed(2)),   // USD for Y-axis positioning
+        z: parseFloat(p.monthlyUSD.toFixed(2)),   // USD for bubble size
         name: p.name,
         color: p.color,
         cycle: p.cycle,
         amount: p.amount,
         currency: p.currency,
+        monthly: p.monthly,                       // original for tooltip
       })),
     [planets]
   );
@@ -320,7 +329,7 @@ export function SubscriptionOverview({ subscriptions }: Props) {
           Renewal Timeline
         </p>
         <p className="mt-0.5 mb-4 text-xs text-gray-600">
-          X = renewal day of month · Y = monthly cost · bubble size = cost
+          X = renewal day · Y &amp; size = monthly cost (USD equivalent)
         </p>
         <ResponsiveContainer width="100%" height={220}>
           <ScatterChart margin={{ top: 10, right: 16, bottom: 20, left: 4 }}>
@@ -347,7 +356,7 @@ export function SubscriptionOverview({ subscriptions }: Props) {
               axisLine={false}
               tickLine={false}
               width={64}
-              tickFormatter={(v) => shortAmount(v, dominantCurrency)}
+              tickFormatter={(v) => `$${v % 1 === 0 ? v : v.toFixed(1)}`}
             />
             <ZAxis type="number" dataKey="z" range={[120, 900]} />
             <Tooltip
