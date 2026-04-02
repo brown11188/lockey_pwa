@@ -19,8 +19,21 @@ async function seed() {
     })
     .onConflictDoNothing();
 
+  const adminPassword = await bcrypt.hash("admin123", 12);
+  await db
+    .insert(schema.users)
+    .values({
+      id: crypto.randomUUID(),
+      email: "admin@lockey.app",
+      name: "Admin",
+      hashedPassword: adminPassword,
+      role: "admin",
+    })
+    .onConflictDoNothing();
+
   console.log("Seed complete");
   console.log("Demo account: demo@lockey.app / password123");
+  console.log("Admin account: admin@lockey.app / admin123");
 }
 
 seed().catch(console.error);

@@ -8,12 +8,14 @@ import { Onboarding } from "@/components/onboarding";
 import { BottomTabs } from "@/components/bottom-tabs";
 
 const AUTH_PATHS = ["/login", "/register", "/reset-password"];
+const ADMIN_PATHS = ["/admin"];
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { status } = useSession();
   const isAuthPage = AUTH_PATHS.some((p) => pathname.startsWith(p));
+  const isAdminPage = ADMIN_PATHS.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
     if (!isAuthPage && status === "unauthenticated") {
@@ -24,6 +26,11 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
   // On auth pages, render children directly (no bottom tabs/onboarding)
   if (isAuthPage) {
     return <main className="mx-auto max-w-lg">{children}</main>;
+  }
+
+  // Admin pages render their own layout — bypass the PWA shell entirely
+  if (isAdminPage) {
+    return <>{children}</>;
   }
 
   // While loading session, show a splash
