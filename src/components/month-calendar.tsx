@@ -7,6 +7,7 @@ import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from
 export interface CalendarDayMeta {
   amount: number;
   count: number;
+  photos?: string[]; // up to 3 photo URIs for thumbnail stack
 }
 
 interface MonthCalendarProps {
@@ -125,7 +126,7 @@ export function MonthCalendar({ value, onChange, markedDates, dayMeta }: MonthCa
         {Array.from({ length: rows * 7 }, (_, index) => {
           const day = index - firstDay + 1;
           if (day < 1 || day > daysInMonth) {
-            return <div key={index} className="h-10" />;
+            return <div key={index} className="h-16" />;
           }
 
           const dateKey = toDateKey(viewYear, viewMonth, day);
@@ -135,40 +136,110 @@ export function MonthCalendar({ value, onChange, markedDates, dayMeta }: MonthCa
           const isMarked = markedDates?.has(dateKey) ?? false;
           const hasSpending = (meta?.amount ?? 0) > 0;
           const isHighSpend = (meta?.count ?? 0) >= 3 || (meta?.amount ?? 0) >= 500000;
+          const photos = meta?.photos ?? [];
+          const hasPhotos = photos.length > 0;
 
           return (
             <button
               key={dateKey}
               type="button"
               onClick={() => selectDate(dateKey)}
-              className={`relative flex h-14 w-full flex-col items-center justify-center rounded-xl border text-sm font-medium transition-all ${
-                isSelected
-                  ? "border-amber-400 bg-amber-500 font-bold text-gray-950 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]"
-                  : isHighSpend
-                    ? "border-rose-500/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15"
-                    : hasSpending
-                      ? "border-emerald-500/20 bg-emerald-500/8 text-white hover:bg-emerald-500/12"
-                      : isToday
-                        ? "border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                        : "border-transparent text-gray-300 hover:bg-white/10"
+              className={`relative flex h-16 w-full flex-col items-center justify-center overflow-hidden rounded-xl border text-sm font-medium transition-all ${
+                hasPhotos
+                  ? isSelected
+                    ? "border-amber-400"
+                    : "border-white/10 hover:border-white/20"
+                  : isSelected
+                    ? "border-amber-400 bg-amber-500 font-bold text-gray-950 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]"
+                    : isHighSpend
+                      ? "border-rose-500/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15"
+                      : hasSpending
+                        ? "border-emerald-500/20 bg-emerald-500/8 text-white hover:bg-emerald-500/12"
+                        : isToday
+                          ? "border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                          : "border-transparent text-gray-300 hover:bg-white/10"
               }`}
             >
-              <span>{day}</span>
-              {meta ? (
-                <span className={`mt-1 text-[10px] leading-none ${isSelected ? "text-gray-900/80" : "text-gray-400"}`}>
-                  {meta.count}
-                </span>
-              ) : null}
-              {isMarked && !isSelected ? (
-                <span
-                  className={`absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full ${
-                    isHighSpend ? "bg-rose-400" : "bg-emerald-400"
-                  }`}
-                />
-              ) : null}
-              {isToday && !isSelected && !isMarked ? (
-                <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-amber-400" />
-              ) : null}
+              {hasPhotos ? (
+                /* ── Photo stack mode ─────────────────────── */
+                <>
+                  {/* Back photos — rotated behind */}
+                  {photos.length >= 3 && (
+                    <img
+                      src={photos[2]}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                      style={{ transform: "rotate(10deg) scale(0.88)", transformOrigin: "bottom center", zIndex: 1 }}
+                    />
+                  )}
+                  {photos.length >= 2 && (
+                    <img
+                      src={photos[1]}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                      style={{ transform: "rotate(5deg) scale(0.94)", transformOrigin: "bottom center", zIndex: 2 }}
+                    />
+                  )}
+                  {/* Front photo */}
+                  <img
+                    src={photos[0]}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                    style={{ zIndex: 3 }}
+                  />
+                  {/* Gradient overlay for readability */}
+                  <div
+                    className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/35"
+                    style={{ zIndex: 4 }}
+                  />
+                  {/* Day number */}
+                  <span
+                    className="absolute inset-x-0 top-1 text-center text-[11px] font-bold text-white"
+                    style={{ zIndex: 5, textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}
+                  >
+                    {day}
+                  </span>
+                  {/* Count badge when multiple photos */}
+                  {photos.length > 1 && (
+                    <span
+                      className="absolute bottom-1 right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-black/70 px-0.5 text-[7px] font-bold text-white backdrop-blur-sm"
+                      style={{ zIndex: 5 }}
+                    >
+                      {photos.length}
+                    </span>
+                  )}
+                  {/* Selected amber ring */}
+                  {isSelected && (
+                    <div
+                      className="absolute inset-0 rounded-xl ring-2 ring-inset ring-amber-400"
+                      style={{ zIndex: 6 }}
+                    />
+                  )}
+                  {/* Today dot */}
+                  {isToday && !isSelected && (
+                    <span
+                      className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-amber-400"
+                      style={{ zIndex: 5 }}
+                    />
+                  )}
+                </>
+              ) : (
+                /* ── Plain day mode ────────────────────────── */
+                <>
+                  <span>{day}</span>
+                  {meta ? (
+                    <span className={`mt-1 text-[10px] leading-none ${isSelected ? "text-gray-900/80" : "text-gray-400"}`}>
+                      {meta.count}
+                    </span>
+                  ) : null}
+                  {isMarked && !isSelected ? (
+                    <span className={`absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full ${isHighSpend ? "bg-rose-400" : "bg-emerald-400"}`} />
+                  ) : null}
+                  {isToday && !isSelected && !isMarked ? (
+                    <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-amber-400" />
+                  ) : null}
+                </>
+              )}
             </button>
           );
         })}

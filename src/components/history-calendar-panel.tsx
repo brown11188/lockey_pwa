@@ -38,10 +38,13 @@ export function HistoryCalendarPanel({
   const monthEntries = allEntries.filter((entry) => getMonthKey(entry.createdAt) === selectedMonthKey);
   const dayMeta = monthEntries.reduce<Record<string, CalendarDayMeta>>((acc, entry) => {
     const dateKey = entry.createdAt.slice(0, 10);
-    const current = acc[dateKey] ?? { amount: 0, count: 0 };
+    const current = acc[dateKey] ?? { amount: 0, count: 0, photos: [] };
+    const photos = current.photos ?? [];
     acc[dateKey] = {
       amount: current.amount + entry.amount,
       count: current.count + 1,
+      // Collect up to 3 photo URIs per day for the thumbnail stack
+      photos: entry.photoUri && photos.length < 3 ? [...photos, entry.photoUri] : photos,
     };
     return acc;
   }, {});
