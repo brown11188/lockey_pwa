@@ -49,7 +49,7 @@ export function BottomSheet({
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div className="fixed inset-0 z-[55] flex flex-col justify-end">
       {/* Backdrop */}
       <div
         className={cn(
@@ -62,7 +62,7 @@ export function BottomSheet({
       <div
         ref={sheetRef}
         className={cn(
-          "relative z-10 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-gray-900 transition-transform duration-300 ease-out",
+          "relative z-10 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-gray-900 transition-transform duration-300 ease-out safe-bottom",
           animating ? "translate-y-0" : "translate-y-full",
           className
         )}
