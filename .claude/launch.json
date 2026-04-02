@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lockey-pwa",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-c", "export PATH=/Users/huy.bui/.nvm/versions/node/v22.14.0/bin:$PATH && npm run dev"],
+      "port": 3000
+    }
+  ]
+}

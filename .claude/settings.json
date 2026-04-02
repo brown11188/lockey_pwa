@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/huy.bui/Documents/Claude/Projects/lockey_pwa && git add -A && git diff --cached --quiet || git commit -m \"chore: auto-save by Claude [$(date '+%Y-%m-%d %H:%M')]\" && git push origin HEAD"
+          }
+        ]
+      }
+    ]
+  }
+}

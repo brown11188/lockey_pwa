@@ -34,6 +34,25 @@ function toUSD(amount: number, currency: string): number {
   return currency === "VND" ? amount / VND_TO_USD : amount;
 }
 
+/** Count how many times a subscription renews from today through endDate (inclusive). */
+function countPayments(nextRenewalDate: string, cycle: string, endDate: Date): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+  let next = new Date(nextRenewalDate + "T00:00:00");
+  let count = 0;
+  let guard = 0;
+  while (next <= end && guard++ < 1000) {
+    if (next >= today) count++;
+    if (cycle === "monthly") next = new Date(next.getFullYear(), next.getMonth() + 1, next.getDate());
+    else if (cycle === "yearly") next = new Date(next.getFullYear() + 1, next.getMonth(), next.getDate());
+    else if (cycle === "weekly") next = new Date(next.getTime() + 7 * 24 * 60 * 60 * 1000);
+    else break;
+  }
+  return count;
+}
+
 function shortAmount(amount: number, currency: string): string {
   if (currency === "VND") {
     if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M₫`;
@@ -166,6 +185,38 @@ export function SubscriptionOverview({ subscriptions }: Props) {
       })),
     [planets]
   );
+
+  // ── Spending Forecast ──────────────────────────────────────────────────────
+  const forecastTotals = useMemo(() => {
+    const now = new Date();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const endOfYear = new Date(now.getFullYear(), 11, 31);
+
+    const thisMonth: Record<string, number> = {};
+    const untilEOY: Record<string, number> = {};
+    const fullYear: Record<string, number> = {};
+
+    for (const s of active) {
+      if (!s.isActive) continue;
+      const cur = s.currency;
+      const mCnt = countPayments(s.nextRenewalDate, s.cycle, endOfMonth);
+      const yCnt = countPayments(s.nextRenewalDate, s.cycle, endOfYear);
+      // full year: from Jan 1 of this year — approximate as 12× monthly equivalent
+      const monthly = calcMonthly(s.amount, s.cycle);
+      thisMonth[cur] = (thisMonth[cur] || 0) + s.amount * mCnt;
+      untilEOY[cur] = (untilEOY[cur] || 0) + s.amount * yCnt;
+      fullYear[cur] = (fullYear[cur] || 0) + monthly * 12;
+    }
+
+    // month progress (0–1)
+    const dayOfYear = Math.floor(
+      (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86_400_000
+    );
+    const yearProgress = dayOfYear / 365;
+    const currentMonth = now.getMonth() + 1; // 1-12
+
+    return { thisMonth, untilEOY, fullYear, yearProgress, currentMonth };
+  }, [active]);
 
   if (!active.length) return null;
 
@@ -381,6 +432,65 @@ export function SubscriptionOverview({ subscriptions }: Props) {
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* ── Spending Forecast ───────────────────────────────────── */}
+      <div className="rounded-2xl border border-white/5 bg-gray-900/60 p-5 backdrop-blur-sm">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-4">
+          Spending Forecast
+        </p>
+
+        {/* 3 stat columns */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {(
+            [
+              { label: "This Month", key: "thisMonth" as const },
+              { label: "Until Year End", key: "untilEOY" as const },
+              { label: "Full Year Est.", key: "fullYear" as const },
+            ]
+          ).map(({ label, key }) => {
+            const totals = forecastTotals[key];
+            const entries = Object.entries(totals).filter(([, v]) => v > 0);
+            return (
+              <div
+                key={key}
+                className="flex flex-col items-center rounded-xl border border-white/5 bg-white/5 p-3 gap-1"
+              >
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500 text-center leading-tight">
+                  {label}
+                </p>
+                {entries.length === 0 ? (
+                  <p className="text-sm font-bold text-gray-600">—</p>
+                ) : (
+                  entries.map(([cur, total]) => (
+                    <p key={cur} className="text-xs font-bold text-white leading-tight text-center">
+                      {shortAmount(Math.round(total), cur)}
+                    </p>
+                  ))
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Year progress bar */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[10px] text-gray-500">Year progress</p>
+            <p className="text-[10px] font-semibold text-gray-400">
+              Month {forecastTotals.currentMonth} / 12
+            </p>
+          </div>
+          <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all"
+              style={{ width: `${forecastTotals.yearProgress * 100}%` }}
+            />
+          </div>
+          <p className="mt-1 text-right text-[9px] text-gray-600">
+            {Math.round(forecastTotals.yearProgress * 100)}% of year elapsed
+          </p>
+        </div>
       </div>
     </div>
   );
