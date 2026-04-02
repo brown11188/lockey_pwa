@@ -38,7 +38,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
   const [name, setName] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState(defaultCurrency);
+  const [currency, setCurrency] = useState<"VND" | "USD">((defaultCurrency as "VND" | "USD") ?? "VND");
   const [cycle, setCycle] = useState<Cycle>("monthly");
   const [nextRenewalDate, setNextRenewalDate] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -54,7 +54,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
         setName(initial.name);
         setLogoUrl(initial.logoUrl);
         setAmount(String(initial.amount));
-        setCurrency(initial.currency || defaultCurrency);
+        setCurrency((initial.currency as "VND" | "USD") || (defaultCurrency as "VND" | "USD"));
         setCycle(initial.cycle as Cycle);
         setNextRenewalDate(initial.nextRenewalDate);
         setCategoryId(initial.categoryId || "");
@@ -65,7 +65,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
         setName("");
         setLogoUrl(null);
         setAmount("");
-        setCurrency(defaultCurrency);
+        setCurrency((defaultCurrency as "VND" | "USD") ?? "VND");
         setCycle("monthly");
         setNextRenewalDate("");
         setCategoryId("");
