@@ -9,6 +9,7 @@ import {
   primaryKey,
   customType,
   unique,
+  index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -108,23 +109,29 @@ export const photos = pgTable("photos", {
 
 // ─── App Tables ─────────────────────────────────────────────────────────────
 
-export const entries = pgTable("entries", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  photoId: text("photo_id").references(() => photos.id, {
-    onDelete: "set null",
-  }),
-  photoUri: text("photo_uri"),
-  amount: real("amount").notNull(),
-  currency: text("currency").notNull().default("VND"),
-  category: text("category").notNull(),
-  note: text("note").default(""),
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`to_char(timezone('utc', now()), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`),
-});
+export const entries = pgTable(
+  "entries",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    photoId: text("photo_id").references(() => photos.id, {
+      onDelete: "set null",
+    }),
+    photoUri: text("photo_uri"),
+    amount: real("amount").notNull(),
+    currency: text("currency").notNull().default("VND"),
+    category: text("category").notNull(),
+    note: text("note").default(""),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`to_char(timezone('utc', now()), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`),
+  },
+  (t) => ({
+    userCreatedIdx: index("idx_entries_user_created").on(t.userId, t.createdAt),
+  })
+);
 
 export const settings = pgTable(
   "settings",
@@ -137,6 +144,7 @@ export const settings = pgTable(
   },
   (t) => ({
     pk: primaryKey({ columns: [t.key, t.userId] }),
+    userIdIdx: index("idx_settings_user_id").on(t.userId),
   })
 );
 
@@ -210,42 +218,54 @@ export const familyMembers = pgTable(
 
 // ─── Budgets ────────────────────────────────────────────────────────────────
 
-export const budgets = pgTable("budgets", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  categoryId: text("category_id").notNull(),
-  monthlyBudget: real("monthly_budget").notNull(),
-  currency: text("currency").notNull().default("VND"),
-  isRecurring: boolean("is_recurring").notNull().default(true),
-  appliedFrom: text("applied_from").notNull(),
-  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "date" })
-    .notNull()
-    .defaultNow()
-    .$onUpdateFn(() => new Date()),
-});
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    categoryId: text("category_id").notNull(),
+    monthlyBudget: real("monthly_budget").notNull(),
+    currency: text("currency").notNull().default("VND"),
+    isRecurring: boolean("is_recurring").notNull().default(true),
+    appliedFrom: text("applied_from").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => ({
+    userIdIdx: index("idx_budgets_user_id").on(t.userId),
+  })
+);
 
 // ─── Streaks ────────────────────────────────────────────────────────────────
 
-export const streaks = pgTable("streaks", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  currentStreak: integer("current_streak").notNull().default(0),
-  longestStreak: integer("longest_streak").notNull().default(0),
-  lastLoggedDate: text("last_logged_date"),
-  updatedAt: timestamp("updated_at", { mode: "date" })
-    .notNull()
-    .defaultNow()
-    .$onUpdateFn(() => new Date()),
-});
+export const streaks = pgTable(
+  "streaks",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    currentStreak: integer("current_streak").notNull().default(0),
+    longestStreak: integer("longest_streak").notNull().default(0),
+    lastLoggedDate: text("last_logged_date"),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => ({
+    userIdIdx: index("idx_streaks_user_id").on(t.userId),
+  })
+);
 
 // ─── Badges ─────────────────────────────────────────────────────────────────
 
