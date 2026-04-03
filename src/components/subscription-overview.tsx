@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   ScatterChart,
   Scatter,
@@ -126,7 +126,10 @@ interface Props {
   ratesLive: boolean;
 }
 
+type ChartView = "orbit" | "bubble";
+
 export function SubscriptionOverview({ subscriptions, targetCurrency, exchangeRates, ratesLive }: Props) {
+  const [chartView, setChartView] = useState<ChartView>("orbit");
   const active = useMemo(() => subscriptions.filter((s) => s.isActive), [subscriptions]);
 
   const planets = useMemo<Planet[]>(() => {
@@ -227,188 +230,228 @@ export function SubscriptionOverview({ subscriptions, targetCurrency, exchangeRa
 
   return (
     <div className="space-y-4">
-      {/* ── Orbit Chart ─────────────────────────────────────────── */}
+      {/* ── Chart panel (Orbit / Bubble – switchable) ────────────── */}
       <div className="overflow-hidden rounded-2xl border border-white/5 bg-gray-900/60 backdrop-blur-sm">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-1">
+        {/* Header with toggle */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-              Subscription Orbits
+              {chartView === "orbit" ? "Subscription Orbits" : "Renewal Timeline"}
             </p>
-            <p className="mt-0.5 text-xs text-gray-600">Each planet = one subscription · size = monthly cost</p>
+            <p className="mt-0.5 text-xs text-gray-600">
+              {chartView === "orbit"
+                ? "Each planet = one subscription · size = monthly cost"
+                : "X = renewal day · Y & size = monthly cost (USD equivalent)"}
+            </p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500">Active</p>
-            <p className="text-lg font-bold text-white">{active.length}</p>
+          <div className="flex flex-col items-end gap-2">
+            {/* Chart switcher toggle */}
+            <div className="flex items-center rounded-lg border border-white/10 bg-white/5 p-0.5 text-[10px] font-semibold">
+              <button
+                onClick={() => setChartView("orbit")}
+                className={`rounded-md px-2.5 py-1 transition-colors ${
+                  chartView === "orbit"
+                    ? "bg-amber-500/20 text-amber-400"
+                    : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                Orbit
+              </button>
+              <button
+                onClick={() => setChartView("bubble")}
+                className={`rounded-md px-2.5 py-1 transition-colors ${
+                  chartView === "bubble"
+                    ? "bg-amber-500/20 text-amber-400"
+                    : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                Bubble
+              </button>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Active</p>
+              <p className="text-lg font-bold leading-none text-white">{active.length}</p>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col items-center">
-          {/* SVG orbit visualization */}
-          <svg
-            viewBox="0 0 280 280"
-            className="w-full max-w-[300px]"
-            style={{ overflow: "visible" }}
-          >
-            <defs>
-              <radialGradient id="sub-center-glow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-              </radialGradient>
-              {planets.map((p) => (
-                <radialGradient key={`rg-${p.id}`} id={`pg-${p.id}`} cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor={p.color} stopOpacity="0.7" />
-                  <stop offset="100%" stopColor={p.color} stopOpacity="0" />
+        {chartView === "orbit" ? (
+          <div className="flex flex-col items-center">
+            {/* SVG orbit visualization */}
+            <svg
+              viewBox="0 0 280 280"
+              className="w-full max-w-[300px]"
+              style={{ overflow: "visible" }}
+            >
+              <defs>
+                <radialGradient id="sub-center-glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
                 </radialGradient>
+                {planets.map((p) => (
+                  <radialGradient key={`rg-${p.id}`} id={`pg-${p.id}`} cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor={p.color} stopOpacity="0.7" />
+                    <stop offset="100%" stopColor={p.color} stopOpacity="0" />
+                  </radialGradient>
+                ))}
+              </defs>
+
+              <circle cx={C} cy={C} r="75" fill="url(#sub-center-glow)" />
+
+              {ORBIT_RADII.map((r, i) => (
+                <circle
+                  key={i}
+                  cx={C}
+                  cy={C}
+                  r={r}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.05)"
+                  strokeWidth="1"
+                  strokeDasharray="5 5"
+                />
               ))}
-            </defs>
 
-            <circle cx={C} cy={C} r="75" fill="url(#sub-center-glow)" />
-
-            {ORBIT_RADII.map((r, i) => (
               <circle
-                key={i}
                 cx={C}
                 cy={C}
-                r={r}
-                fill="none"
-                stroke="rgba(255,255,255,0.05)"
-                strokeWidth="1"
-                strokeDasharray="5 5"
+                r="38"
+                fill="rgba(245,158,11,0.08)"
+                stroke="rgba(245,158,11,0.2)"
+                strokeWidth="1.5"
               />
-            ))}
 
-            <circle
-              cx={C}
-              cy={C}
-              r="38"
-              fill="rgba(245,158,11,0.08)"
-              stroke="rgba(245,158,11,0.2)"
-              strokeWidth="1.5"
-            />
+              {/* Single converted monthly total */}
+              <text x={C} y={C - 7} textAnchor="middle" fill="white" fontSize="10" fontWeight="700">
+                {orbitMonthlyTotal.wasConverted ? "≈" : ""}{shortAmount(Math.round(orbitMonthlyTotal.total), targetCurrency)}
+              </text>
+              <text x={C} y={C + 8} textAnchor="middle" fill="rgba(156,163,175,0.8)" fontSize="7.5">
+                per month
+              </text>
 
-            {/* Single converted monthly total */}
-            <text x={C} y={C - 7} textAnchor="middle" fill="white" fontSize="10" fontWeight="700">
-              {orbitMonthlyTotal.wasConverted ? "≈" : ""}{shortAmount(Math.round(orbitMonthlyTotal.total), targetCurrency)}
-            </text>
-            <text x={C} y={C + 8} textAnchor="middle" fill="rgba(156,163,175,0.8)" fontSize="7.5">
-              per month
-            </text>
-
-            {/* Orbiting planets */}
-            {planets.map((p) => (
-              <g key={p.id}>
-                <circle
-                  cx={C + p.radius}
-                  cy={C}
-                  r={p.size + 5}
-                  fill={`url(#pg-${p.id})`}
-                >
-                  <animateTransform
-                    attributeName="transform"
-                    type="rotate"
-                    from={`${p.startAngle} ${C} ${C}`}
-                    to={`${p.startAngle + 360} ${C} ${C}`}
-                    dur={p.speed}
-                    repeatCount="indefinite"
-                  />
-                </circle>
-                <circle
-                  cx={C + p.radius}
-                  cy={C}
-                  r={p.size}
-                  fill={p.color}
-                  fillOpacity="0.9"
-                >
-                  <animateTransform
-                    attributeName="transform"
-                    type="rotate"
-                    from={`${p.startAngle} ${C} ${C}`}
-                    to={`${p.startAngle + 360} ${C} ${C}`}
-                    dur={p.speed}
-                    repeatCount="indefinite"
-                  />
-                </circle>
-              </g>
-            ))}
-          </svg>
-
-          {/* Legend */}
-          <div className="grid w-full grid-cols-2 gap-x-6 gap-y-2.5 px-5 pb-5">
-            {planets.map((p) => (
-              <div key={p.id} className="flex items-center gap-2 min-w-0">
-                <div
-                  className="h-2.5 w-2.5 flex-shrink-0 rounded-full shadow-sm"
-                  style={{ backgroundColor: p.color, boxShadow: `0 0 6px ${p.color}80` }}
-                />
-                <span className="flex-1 truncate text-xs text-gray-400">{p.name}</span>
-                <span className="flex-shrink-0 text-xs font-semibold text-white">
-                  {shortAmount(Math.round(p.monthly), p.currency)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Bubble Chart ────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-white/5 bg-gray-900/60 p-5 backdrop-blur-sm">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-          Renewal Timeline
-        </p>
-        <p className="mt-0.5 mb-4 text-xs text-gray-600">
-          X = renewal day · Y &amp; size = monthly cost (USD equivalent)
-        </p>
-        <ResponsiveContainer width="100%" height={220}>
-          <ScatterChart margin={{ top: 10, right: 16, bottom: 20, left: 4 }}>
-            <XAxis
-              type="number"
-              dataKey="x"
-              domain={[0, 32]}
-              ticks={[1, 7, 14, 21, 28, 31]}
-              tick={{ fill: "rgba(156,163,175,0.7)", fontSize: 10 }}
-              axisLine={{ stroke: "rgba(255,255,255,0.05)" }}
-              tickLine={false}
-              label={{
-                value: "Day of month",
-                position: "insideBottom",
-                offset: -10,
-                fill: "rgba(107,114,128,0.7)",
-                fontSize: 10,
-              }}
-            />
-            <YAxis
-              type="number"
-              dataKey="y"
-              tick={{ fill: "rgba(156,163,175,0.7)", fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-              width={64}
-              tickFormatter={(v) => `$${v % 1 === 0 ? v : v.toFixed(1)}`}
-            />
-            <ZAxis type="number" dataKey="z" range={[120, 900]} />
-            <Tooltip
-              cursor={false}
-              content={(props) => (
-                <BubbleTooltip
-                  active={props.active}
-                  payload={props.payload as unknown as { payload: BubbleDatum }[] | undefined}
-                />
-              )}
-            />
-            <Scatter data={bubbleData} fillOpacity={0.82}>
-              {bubbleData.map((entry, i) => (
-                <Cell
-                  key={i}
-                  fill={entry.color}
-                  stroke={entry.color}
-                  strokeOpacity={0.4}
-                  strokeWidth={2}
-                />
+              {/* Orbiting planets */}
+              {planets.map((p) => (
+                <g key={p.id}>
+                  <circle
+                    cx={C + p.radius}
+                    cy={C}
+                    r={p.size + 5}
+                    fill={`url(#pg-${p.id})`}
+                  >
+                    <animateTransform
+                      attributeName="transform"
+                      type="rotate"
+                      from={`${p.startAngle} ${C} ${C}`}
+                      to={`${p.startAngle + 360} ${C} ${C}`}
+                      dur={p.speed}
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                  <circle
+                    cx={C + p.radius}
+                    cy={C}
+                    r={p.size}
+                    fill={p.color}
+                    fillOpacity="0.9"
+                  >
+                    <animateTransform
+                      attributeName="transform"
+                      type="rotate"
+                      from={`${p.startAngle} ${C} ${C}`}
+                      to={`${p.startAngle + 360} ${C} ${C}`}
+                      dur={p.speed}
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                </g>
               ))}
-            </Scatter>
-          </ScatterChart>
-        </ResponsiveContainer>
+            </svg>
+
+            {/* Legend */}
+            <div className="grid w-full grid-cols-2 gap-x-6 gap-y-2.5 px-5 pb-5">
+              {planets.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="h-2.5 w-2.5 flex-shrink-0 rounded-full shadow-sm"
+                    style={{ backgroundColor: p.color, boxShadow: `0 0 6px ${p.color}80` }}
+                  />
+                  <span className="flex-1 truncate text-xs text-gray-400">{p.name}</span>
+                  <span className="flex-shrink-0 text-xs font-semibold text-white">
+                    {shortAmount(Math.round(p.monthly), p.currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="px-5 pb-5">
+            <ResponsiveContainer width="100%" height={220}>
+              <ScatterChart margin={{ top: 10, right: 16, bottom: 20, left: 4 }}>
+                <XAxis
+                  type="number"
+                  dataKey="x"
+                  domain={[0, 32]}
+                  ticks={[1, 7, 14, 21, 28, 31]}
+                  tick={{ fill: "rgba(156,163,175,0.7)", fontSize: 10 }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.05)" }}
+                  tickLine={false}
+                  label={{
+                    value: "Day of month",
+                    position: "insideBottom",
+                    offset: -10,
+                    fill: "rgba(107,114,128,0.7)",
+                    fontSize: 10,
+                  }}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="y"
+                  tick={{ fill: "rgba(156,163,175,0.7)", fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={64}
+                  tickFormatter={(v) => `$${v % 1 === 0 ? v : v.toFixed(1)}`}
+                />
+                <ZAxis type="number" dataKey="z" range={[120, 900]} />
+                <Tooltip
+                  cursor={false}
+                  content={(props) => (
+                    <BubbleTooltip
+                      active={props.active}
+                      payload={props.payload as unknown as { payload: BubbleDatum }[] | undefined}
+                    />
+                  )}
+                />
+                <Scatter data={bubbleData} fillOpacity={0.82}>
+                  {bubbleData.map((entry, i) => (
+                    <Cell
+                      key={i}
+                      fill={entry.color}
+                      stroke={entry.color}
+                      strokeOpacity={0.4}
+                      strokeWidth={2}
+                    />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+
+            {/* Legend */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 mt-3">
+              {planets.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="h-2.5 w-2.5 flex-shrink-0 rounded-full shadow-sm"
+                    style={{ backgroundColor: p.color, boxShadow: `0 0 6px ${p.color}80` }}
+                  />
+                  <span className="flex-1 truncate text-xs text-gray-400">{p.name}</span>
+                  <span className="flex-shrink-0 text-xs font-semibold text-white">
+                    {shortAmount(Math.round(p.monthly), p.currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Spending Forecast ───────────────────────────────────── */}
