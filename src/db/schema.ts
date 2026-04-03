@@ -8,6 +8,7 @@ import {
   timestamp,
   primaryKey,
   customType,
+  unique,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -158,12 +159,54 @@ export const subscriptions = pgTable("subscriptions", {
   note: text("note").default(""),
   reminderDaysBefore: integer("reminder_days_before").notNull().default(3),
   isActive: boolean("is_active").notNull().default(true),
+  isShared: boolean("is_shared").notNull().default(false),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" })
     .notNull()
     .defaultNow()
     .$onUpdateFn(() => new Date()),
 });
+
+// ─── Families ───────────────────────────────────────────────────────────────
+
+export const families = pgTable("families", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  ownerId: text("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  inviteCode: text("invite_code").notNull().unique(),
+  monthlyBudget: real("monthly_budget"),
+  budgetCurrency: text("budget_currency").notNull().default("VND"),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" })
+    .notNull()
+    .defaultNow()
+    .$onUpdateFn(() => new Date()),
+});
+
+export const familyMembers = pgTable(
+  "family_members",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"), // "owner" | "member"
+    isPrivate: boolean("is_private").notNull().default(false),
+    joinedAt: timestamp("joined_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniq: unique().on(t.familyId, t.userId),
+  })
+);
 
 // ─── Budgets ────────────────────────────────────────────────────────────────
 
@@ -247,3 +290,7 @@ export type NewBudget = typeof budgets.$inferInsert;
 export type Streak = typeof streaks.$inferSelect;
 export type Badge = typeof badges.$inferSelect;
 export type WrappedDismissal = typeof wrappedDismissals.$inferSelect;
+export type Family = typeof families.$inferSelect;
+export type NewFamily = typeof families.$inferInsert;
+export type FamilyMember = typeof familyMembers.$inferSelect;
+export type NewFamilyMember = typeof familyMembers.$inferInsert;

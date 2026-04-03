@@ -9,6 +9,7 @@ import {
   LayoutGrid as LayoutGridIcon,
   BarChart3 as BarChart3Icon,
   CreditCard as CreditCardIcon,
+  Users as UsersIcon,
 } from "lucide-react";
 
 export function BottomTabs() {
@@ -20,6 +21,7 @@ export function BottomTabs() {
     { href: "/camera", label: t.tabs.capture, icon: CameraIcon },
     { href: "/stats", label: t.tabs.stats, icon: BarChart3Icon },
     { href: "/subscriptions", label: t.tabs.subscriptions, icon: CreditCardIcon },
+    { href: "/family", label: "Family", icon: UsersIcon },
   ];
 
   return (

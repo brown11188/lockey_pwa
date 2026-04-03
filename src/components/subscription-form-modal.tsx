@@ -29,6 +29,7 @@ export interface SubscriptionFormData {
   note: string;
   reminderDaysBefore: number;
   isActive: boolean;
+  isShared: boolean;
 }
 
 export function SubscriptionFormModal({ open, onClose, onSave, initial }: SubscriptionFormModalProps) {
@@ -45,6 +46,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
   const [note, setNote] = useState("");
   const [reminderDaysBefore, setReminderDaysBefore] = useState(3);
   const [isActive, setIsActive] = useState(true);
+  const [isShared, setIsShared] = useState(false);
   const [suggestions, setSuggestions] = useState<KnownService[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -61,6 +63,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
         setNote(initial.note || "");
         setReminderDaysBefore(initial.reminderDaysBefore);
         setIsActive(initial.isActive);
+        setIsShared(initial.isShared ?? false);
       } else {
         setName("");
         setLogoUrl(null);
@@ -72,6 +75,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
         setNote("");
         setReminderDaysBefore(3);
         setIsActive(true);
+        setIsShared(false);
       }
       setSuggestions([]);
       setShowSuggestions(false);
@@ -110,6 +114,7 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
       note,
       reminderDaysBefore,
       isActive,
+      isShared,
     });
   }, [name, logoUrl, amount, currency, cycle, nextRenewalDate, categoryId, note, reminderDaysBefore, isActive, onSave]);
 
@@ -340,6 +345,25 @@ export function SubscriptionFormModal({ open, onClose, onSave, initial }: Subscr
               }`}
             >
               {isActive ? t.subscriptions.active : t.subscriptions.paused}
+            </button>
+          </div>
+
+          {/* Share with family toggle */}
+          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <div>
+              <span className="text-sm font-medium text-gray-300">Share with family</span>
+              <p className="text-xs text-gray-600">Visible to all family members</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsShared(!isShared)}
+              className={`rounded-full px-3 py-1 text-xs font-bold transition-all ${
+                isShared
+                  ? "bg-amber-500/20 text-amber-400"
+                  : "bg-gray-500/20 text-gray-500"
+              }`}
+            >
+              {isShared ? "Shared" : "Private"}
             </button>
           </div>
 

@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     note,
     reminderDaysBefore,
     isActive,
+    isShared,
   } = body;
 
   if (!name || amount == null || !nextRenewalDate) {
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
     note: note || "",
     reminderDaysBefore: reminderDaysBefore ?? 3,
     isActive: isActive ?? true,
+    isShared: isShared ?? false,
   });
 
   return NextResponse.json({ success: true }, { status: 201 });

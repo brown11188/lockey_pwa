@@ -39,6 +39,7 @@ export async function PUT(
       note: body.note !== undefined ? body.note : existing.note,
       reminderDaysBefore: body.reminderDaysBefore ?? existing.reminderDaysBefore,
       isActive: body.isActive !== undefined ? body.isActive : existing.isActive,
+      isShared: body.isShared !== undefined ? body.isShared : existing.isShared,
     })
     .where(and(eq(subscriptions.id, id), eq(subscriptions.userId, user.id)));
 
