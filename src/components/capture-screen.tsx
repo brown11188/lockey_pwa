@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { Camera as CameraIcon, Image as ImageIcon, SwitchCamera as SwitchCameraIcon } from "lucide-react";
 import { ExpenseBottomSheet } from "@/components/expense-bottom-sheet";
 
 export function CaptureScreen({ initialDateTime }: { initialDateTime?: string }) {
   const { t } = useLanguage();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -120,8 +121,9 @@ export function CaptureScreen({ initialDateTime }: { initialDateTime?: string })
     setSheetOpen(false);
     setCapturedBlob(null);
     setCapturedPreview(null);
-    startCamera();
-  }, [startCamera]);
+    stopCamera();
+    router.push("/gallery");
+  }, [stopCamera, router]);
 
   return (
     <div className="relative flex h-screen flex-col bg-gray-950">
