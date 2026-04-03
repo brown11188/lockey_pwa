@@ -16,6 +16,7 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import { SubscriptionOverview } from "@/components/subscription-overview";
+import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import type { Subscription } from "@/db/schema";
 
 function getDaysUntilRenewal(dateStr: string): number {
@@ -29,6 +30,7 @@ function getDaysUntilRenewal(dateStr: string): number {
 
 export function SubscriptionsScreen() {
   const { currency } = useCurrency();
+  const { rates, isLive } = useExchangeRates();
   const { t } = useLanguage();
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,7 +173,12 @@ export function SubscriptionsScreen() {
       ) : (
         <div className="px-4 pt-4 space-y-6">
           {/* Overview charts */}
-          <SubscriptionOverview subscriptions={subs} currency={currency} />
+          <SubscriptionOverview
+            subscriptions={subs}
+            targetCurrency={currency}
+            exchangeRates={rates}
+            ratesLive={isLive}
+          />
 
           {/* Upcoming renewals */}
           {upcomingSubs.length > 0 && (

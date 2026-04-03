@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { formatCurrency } from "@/lib/format";
 import { findKnownService } from "@/lib/known-services";
+import { convertTotalsMap, type ExchangeRates } from "@/lib/currency-utils";
 import type { Subscription } from "@/db/schema";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -29,9 +30,8 @@ function calcMonthly(amount: number, cycle: string): number {
 }
 
 // Normalize to USD for cross-currency comparison (sizing, chart axes)
-const VND_TO_USD = 25000;
-function toUSD(amount: number, currency: string): number {
-  return currency === "VND" ? amount / VND_TO_USD : amount;
+function toUSD(amount: number, currency: string, rates: ExchangeRates): number {
+  return currency === "VND" ? amount / (rates["VND"] ?? 25000) : amount;
 }
 
 /** Count how many times a subscription renews from today through endDate (inclusive). */
@@ -121,10 +121,12 @@ interface BubbleDatum {
 
 interface Props {
   subscriptions: Subscription[];
-  currency?: string; // kept for legacy compat, totals are now per-subscription currency
+  targetCurrency: string;
+  exchangeRates: ExchangeRates;
+  ratesLive: boolean;
 }
 
-export function SubscriptionOverview({ subscriptions }: Props) {
+export function SubscriptionOverview({ subscriptions, targetCurrency, exchangeRates, ratesLive }: Props) {
   const active = useMemo(() => subscriptions.filter((s) => s.isActive), [subscriptions]);
 
   const planets = useMemo<Planet[]>(() => {
@@ -133,12 +135,11 @@ export function SubscriptionOverview({ subscriptions }: Props) {
       .map((s) => ({
         ...s,
         monthly: calcMonthly(s.amount, s.cycle),
-        monthlyUSD: toUSD(calcMonthly(s.amount, s.cycle), s.currency),
+        monthlyUSD: toUSD(calcMonthly(s.amount, s.cycle), s.currency, exchangeRates),
       }))
-      .sort((a, b) => b.monthlyUSD - a.monthlyUSD); // sort by USD value
+      .sort((a, b) => b.monthlyUSD - a.monthlyUSD);
     const maxMonthlyUSD = Math.max(...sorted.map((s) => s.monthlyUSD));
 
-    // bucket into 3 orbit rings by index mod 3
     const buckets: number[][] = [[], [], []];
     sorted.forEach((_, i) => buckets[i % 3].push(i));
 
@@ -154,34 +155,34 @@ export function SubscriptionOverview({ subscriptions }: Props) {
         startAngle,
         radius: ORBIT_RADII[orbitIdx],
         speed: ORBIT_SPEEDS[orbitIdx],
-        size: 7 + (sub.monthlyUSD / maxMonthlyUSD) * 13, // size by USD value
+        size: 7 + (sub.monthlyUSD / maxMonthlyUSD) * 13,
         color: PALETTE[gi % PALETTE.length],
         logo,
       };
     });
-  }, [active]);
+  }, [active, exchangeRates]);
 
-  // Group monthly totals by currency (handle mixed VND/USD)
-  const totalsByCurrency = useMemo(() => {
+  // Convert monthly totals to the user's selected currency
+  const orbitMonthlyTotal = useMemo(() => {
     const map: Record<string, number> = {};
     for (const s of active) {
       map[s.currency] = (map[s.currency] || 0) + calcMonthly(s.amount, s.cycle);
     }
-    return Object.entries(map); // [[currency, total], ...]
-  }, [active]);
+    return convertTotalsMap(map, targetCurrency, exchangeRates);
+  }, [active, targetCurrency, exchangeRates]);
 
   const bubbleData = useMemo<BubbleDatum[]>(
     () =>
       planets.map((p) => ({
         x: new Date(p.nextRenewalDate + "T00:00:00").getDate(),
-        y: parseFloat(p.monthlyUSD.toFixed(2)),   // USD for Y-axis positioning
-        z: parseFloat(p.monthlyUSD.toFixed(2)),   // USD for bubble size
+        y: parseFloat(p.monthlyUSD.toFixed(2)),
+        z: parseFloat(p.monthlyUSD.toFixed(2)),
         name: p.name,
         color: p.color,
         cycle: p.cycle,
         amount: p.amount,
         currency: p.currency,
-        monthly: p.monthly,                       // original for tooltip
+        monthly: p.monthly,
       })),
     [planets]
   );
@@ -201,22 +202,26 @@ export function SubscriptionOverview({ subscriptions }: Props) {
       const cur = s.currency;
       const mCnt = countPayments(s.nextRenewalDate, s.cycle, endOfMonth);
       const yCnt = countPayments(s.nextRenewalDate, s.cycle, endOfYear);
-      // full year: from Jan 1 of this year — approximate as 12× monthly equivalent
       const monthly = calcMonthly(s.amount, s.cycle);
       thisMonth[cur] = (thisMonth[cur] || 0) + s.amount * mCnt;
       untilEOY[cur] = (untilEOY[cur] || 0) + s.amount * yCnt;
       fullYear[cur] = (fullYear[cur] || 0) + monthly * 12;
     }
 
-    // month progress (0–1)
     const dayOfYear = Math.floor(
       (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86_400_000
     );
     const yearProgress = dayOfYear / 365;
-    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentMonth = now.getMonth() + 1;
 
-    return { thisMonth, untilEOY, fullYear, yearProgress, currentMonth };
-  }, [active]);
+    return {
+      thisMonth: convertTotalsMap(thisMonth, targetCurrency, exchangeRates),
+      untilEOY: convertTotalsMap(untilEOY, targetCurrency, exchangeRates),
+      fullYear: convertTotalsMap(fullYear, targetCurrency, exchangeRates),
+      yearProgress,
+      currentMonth,
+    };
+  }, [active, targetCurrency, exchangeRates]);
 
   if (!active.length) return null;
 
@@ -246,12 +251,10 @@ export function SubscriptionOverview({ subscriptions }: Props) {
             style={{ overflow: "visible" }}
           >
             <defs>
-              {/* Amber glow at center */}
               <radialGradient id="sub-center-glow" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.35" />
                 <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
               </radialGradient>
-              {/* Per-planet glow */}
               {planets.map((p) => (
                 <radialGradient key={`rg-${p.id}`} id={`pg-${p.id}`} cx="50%" cy="50%" r="50%">
                   <stop offset="0%" stopColor={p.color} stopOpacity="0.7" />
@@ -260,10 +263,8 @@ export function SubscriptionOverview({ subscriptions }: Props) {
               ))}
             </defs>
 
-            {/* Center ambient glow */}
             <circle cx={C} cy={C} r="75" fill="url(#sub-center-glow)" />
 
-            {/* Orbit ring tracks */}
             {ORBIT_RADII.map((r, i) => (
               <circle
                 key={i}
@@ -277,7 +278,6 @@ export function SubscriptionOverview({ subscriptions }: Props) {
               />
             ))}
 
-            {/* Centre disc */}
             <circle
               cx={C}
               cy={C}
@@ -286,40 +286,18 @@ export function SubscriptionOverview({ subscriptions }: Props) {
               stroke="rgba(245,158,11,0.2)"
               strokeWidth="1.5"
             />
-            {totalsByCurrency.length === 1 ? (
-              <>
-                <text x={C} y={C - 7} textAnchor="middle" fill="white" fontSize="10" fontWeight="700">
-                  {shortAmount(Math.round(totalsByCurrency[0][1]), totalsByCurrency[0][0])}
-                </text>
-                <text x={C} y={C + 8} textAnchor="middle" fill="rgba(156,163,175,0.8)" fontSize="7.5">
-                  per month
-                </text>
-              </>
-            ) : (
-              <>
-                {totalsByCurrency.map(([cur, total], i) => (
-                  <text
-                    key={cur}
-                    x={C}
-                    y={C - 11 + i * 13}
-                    textAnchor="middle"
-                    fill={i === 0 ? "white" : "rgba(251,191,36,0.9)"}
-                    fontSize="9"
-                    fontWeight="700"
-                  >
-                    {shortAmount(Math.round(total), cur)}
-                  </text>
-                ))}
-                <text x={C} y={C + 16} textAnchor="middle" fill="rgba(156,163,175,0.8)" fontSize="7">
-                  per month
-                </text>
-              </>
-            )}
+
+            {/* Single converted monthly total */}
+            <text x={C} y={C - 7} textAnchor="middle" fill="white" fontSize="10" fontWeight="700">
+              {orbitMonthlyTotal.wasConverted ? "≈" : ""}{shortAmount(Math.round(orbitMonthlyTotal.total), targetCurrency)}
+            </text>
+            <text x={C} y={C + 8} textAnchor="middle" fill="rgba(156,163,175,0.8)" fontSize="7.5">
+              per month
+            </text>
 
             {/* Orbiting planets */}
             {planets.map((p) => (
               <g key={p.id}>
-                {/* Glow halo */}
                 <circle
                   cx={C + p.radius}
                   cy={C}
@@ -335,7 +313,6 @@ export function SubscriptionOverview({ subscriptions }: Props) {
                     repeatCount="indefinite"
                   />
                 </circle>
-                {/* Planet body */}
                 <circle
                   cx={C + p.radius}
                   cy={C}
@@ -436,41 +413,45 @@ export function SubscriptionOverview({ subscriptions }: Props) {
 
       {/* ── Spending Forecast ───────────────────────────────────── */}
       <div className="rounded-2xl border border-white/5 bg-gray-900/60 p-5 backdrop-blur-sm">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-4">
-          Spending Forecast
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+            Spending Forecast
+          </p>
+          {ratesLive ? (
+            <span className="flex items-center gap-1 text-[9px] text-emerald-400/80">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              live rates
+            </span>
+          ) : (
+            <span className="text-[9px] text-gray-600">est. rates</span>
+          )}
+        </div>
 
         {/* 3 stat columns */}
         <div className="grid grid-cols-3 gap-3 mb-5">
           {(
             [
-              { label: "This Month", key: "thisMonth" as const },
-              { label: "Until Year End", key: "untilEOY" as const },
-              { label: "Full Year Est.", key: "fullYear" as const },
+              { label: "This Month", data: forecastTotals.thisMonth },
+              { label: "Until Year End", data: forecastTotals.untilEOY },
+              { label: "Full Year Est.", data: forecastTotals.fullYear },
             ]
-          ).map(({ label, key }) => {
-            const totals = forecastTotals[key];
-            const entries = Object.entries(totals).filter(([, v]) => v > 0);
-            return (
-              <div
-                key={key}
-                className="flex flex-col items-center rounded-xl border border-white/5 bg-white/5 p-3 gap-1"
-              >
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500 text-center leading-tight">
-                  {label}
+          ).map(({ label, data }) => (
+            <div
+              key={label}
+              className="flex flex-col items-center rounded-xl border border-white/5 bg-white/5 p-3 gap-1"
+            >
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500 text-center leading-tight">
+                {label}
+              </p>
+              {data.total === 0 ? (
+                <p className="text-sm font-bold text-gray-600">—</p>
+              ) : (
+                <p className="text-xs font-bold text-white leading-tight text-center">
+                  {data.wasConverted ? "≈" : ""}{shortAmount(Math.round(data.total), targetCurrency)}
                 </p>
-                {entries.length === 0 ? (
-                  <p className="text-sm font-bold text-gray-600">—</p>
-                ) : (
-                  entries.map(([cur, total]) => (
-                    <p key={cur} className="text-xs font-bold text-white leading-tight text-center">
-                      {shortAmount(Math.round(total), cur)}
-                    </p>
-                  ))
-                )}
-              </div>
-            );
-          })}
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Year progress bar */}
