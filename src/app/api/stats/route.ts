@@ -28,47 +28,77 @@ export async function GET(req: NextRequest) {
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
-  const dateRange = (start: Date, end: Date) =>
-    sql`(${entries.createdAt})::date >= ${format(start, "yyyy-MM-dd")}::date AND (${entries.createdAt})::date <= ${format(end, "yyyy-MM-dd")}::date`;
-
-  // Total spent this week
-  const [weekTotalRow] = await db
-    .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
-    .from(entries)
-    .where(and(userFilter, dateRange(weekStart, weekEnd)));
-
-  // Total spent this month
-  const [monthTotalRow] = await db
-    .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
-    .from(entries)
-    .where(and(userFilter, dateRange(monthStart, monthEnd)));
-
-  // Most expensive category this month
-  const [topCategory] = await db
-    .select({
-      category: entries.category,
-      total: sql<number>`SUM(${entries.amount})`,
-    })
-    .from(entries)
-    .where(and(userFilter, dateRange(monthStart, monthEnd)))
-    .groupBy(entries.category)
-    .orderBy(sql`SUM(${entries.amount}) DESC`)
-    .limit(1);
-
-  // Daily spending for the selected period
   const isWeekView = view === "week";
   const periodStart = isWeekView ? weekStart : monthStart;
   const periodEnd = isWeekView ? weekEnd : monthEnd;
 
-  const dailySpendingRows = await db
-    .select({
-      date: sql<string>`((${entries.createdAt})::date)::text`.as("date"),
-      total: sql<number>`SUM(${entries.amount})`.as("total"),
-    })
-    .from(entries)
-    .where(and(userFilter, dateRange(periodStart, periodEnd)))
-    .groupBy(sql`(${entries.createdAt})::date`)
-    .orderBy(sql`(${entries.createdAt})::date`);
+  const dateRange = (start: Date, end: Date) =>
+    sql`(${entries.createdAt})::date >= ${format(start, "yyyy-MM-dd")}::date AND (${entries.createdAt})::date <= ${format(end, "yyyy-MM-dd")}::date`;
+
+  // ── Run all 6 queries in parallel instead of sequentially ──────────────────
+  const [
+    [weekTotalRow],
+    [monthTotalRow],
+    [topCategory],
+    dailySpendingRows,
+    categoryBreakdown,
+    recentTransactions,
+  ] = await Promise.all([
+    // 1. Total this week
+    db
+      .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
+      .from(entries)
+      .where(and(userFilter, dateRange(weekStart, weekEnd))),
+
+    // 2. Total this month
+    db
+      .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
+      .from(entries)
+      .where(and(userFilter, dateRange(monthStart, monthEnd))),
+
+    // 3. Top category this month
+    db
+      .select({
+        category: entries.category,
+        total: sql<number>`SUM(${entries.amount})`,
+      })
+      .from(entries)
+      .where(and(userFilter, dateRange(monthStart, monthEnd)))
+      .groupBy(entries.category)
+      .orderBy(sql`SUM(${entries.amount}) DESC`)
+      .limit(1),
+
+    // 4. Daily spending for selected period
+    db
+      .select({
+        date: sql<string>`((${entries.createdAt})::date)::text`.as("date"),
+        total: sql<number>`SUM(${entries.amount})`.as("total"),
+      })
+      .from(entries)
+      .where(and(userFilter, dateRange(periodStart, periodEnd)))
+      .groupBy(sql`(${entries.createdAt})::date`)
+      .orderBy(sql`(${entries.createdAt})::date`),
+
+    // 5. Category breakdown for selected period
+    db
+      .select({
+        category: entries.category,
+        total: sql<number>`SUM(${entries.amount})`.as("total"),
+        count: sql<number>`COUNT(*)`.as("count"),
+      })
+      .from(entries)
+      .where(and(userFilter, dateRange(periodStart, periodEnd)))
+      .groupBy(entries.category)
+      .orderBy(sql`SUM(${entries.amount}) DESC`),
+
+    // 6. Recent transactions (last 10)
+    db
+      .select()
+      .from(entries)
+      .where(userFilter)
+      .orderBy(desc(entries.createdAt))
+      .limit(10),
+  ]);
 
   const dailyMap = new Map(dailySpendingRows.map((d) => [d.date, d.total]));
 
@@ -82,26 +112,6 @@ export async function GET(req: NextRequest) {
       };
     }
   );
-
-  // Category breakdown for the selected period
-  const categoryBreakdown = await db
-    .select({
-      category: entries.category,
-      total: sql<number>`SUM(${entries.amount})`.as("total"),
-      count: sql<number>`COUNT(*)`.as("count"),
-    })
-    .from(entries)
-    .where(and(userFilter, dateRange(periodStart, periodEnd)))
-    .groupBy(entries.category)
-    .orderBy(sql`SUM(${entries.amount}) DESC`);
-
-  // Recent transactions (last 10)
-  const recentTransactions = await db
-    .select()
-    .from(entries)
-    .where(userFilter)
-    .orderBy(desc(entries.createdAt))
-    .limit(10);
 
   return NextResponse.json({
     weekTotal: weekTotalRow?.total ?? 0,

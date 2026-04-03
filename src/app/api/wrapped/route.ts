@@ -37,30 +37,30 @@ export async function GET(req: NextRequest) {
   const { start, end } = getMonthRange(year, month);
   const monthKey = `${year}-${month.toString().padStart(2, "0")}`;
 
-  const dateFilter = sql`(${entries.createdAt})::date >= ${start}::date AND (${entries.createdAt})::date <= ${end}::date`;
-
-  // Check if already dismissed
-  const [dismissed] = await db
-    .select()
-    .from(wrappedDismissals)
-    .where(
-      and(
-        eq(wrappedDismissals.userId, user.id),
-        eq(wrappedDismissals.monthKey, monthKey)
-      )
-    )
-    .limit(1);
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevRange = getMonthRange(prevYear, prevMonth);
 
   const userFilter = eq(entries.userId, user.id);
+  const dateFilter = sql`(${entries.createdAt})::date >= ${start}::date AND (${entries.createdAt})::date <= ${end}::date`;
+  const prevDateFilter = sql`(${entries.createdAt})::date >= ${prevRange.start}::date AND (${entries.createdAt})::date <= ${prevRange.end}::date`;
 
-  // Total spending this month
-  const [totalResult] = await db
-    .select({
-      total: sql<number>`COALESCE(SUM(${entries.amount}), 0)`,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(entries)
-    .where(and(userFilter, dateFilter));
+  // ── Batch 1: dismissed check + total spending (always needed) ──────────────
+  const [[dismissed], [totalResult]] = await Promise.all([
+    db
+      .select()
+      .from(wrappedDismissals)
+      .where(and(eq(wrappedDismissals.userId, user.id), eq(wrappedDismissals.monthKey, monthKey)))
+      .limit(1),
+
+    db
+      .select({
+        total: sql<number>`COALESCE(SUM(${entries.amount}), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(entries)
+      .where(and(userFilter, dateFilter)),
+  ]);
 
   const totalSpending = totalResult?.total ?? 0;
   const entryCount = totalResult?.count ?? 0;
@@ -69,68 +69,83 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ hasData: false, dismissed: !!dismissed, monthKey });
   }
 
-  // Days with entries
-  const [activeDays] = await db
-    .select({ count: sql<number>`COUNT(DISTINCT (${entries.createdAt})::date)` })
-    .from(entries)
-    .where(and(userFilter, dateFilter));
+  // ── Batch 2: all remaining queries in parallel ─────────────────────────────
+  const [
+    [activeDays],
+    [topCategory],
+    [biggestDay],
+    [prevTotal],
+    [foodSpending],
+    prevCategories,
+    currentCategories,
+  ] = await Promise.all([
+    // Active days
+    db
+      .select({ count: sql<number>`COUNT(DISTINCT (${entries.createdAt})::date)` })
+      .from(entries)
+      .where(and(userFilter, dateFilter)),
 
-  // Top category
-  const [topCategory] = await db
-    .select({
-      category: entries.category,
-      total: sql<number>`SUM(${entries.amount})`,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(entries)
-    .where(and(userFilter, dateFilter))
-    .groupBy(entries.category)
-    .orderBy(sql`SUM(${entries.amount}) DESC`)
-    .limit(1);
+    // Top category this month
+    db
+      .select({
+        category: entries.category,
+        total: sql<number>`SUM(${entries.amount})`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(entries)
+      .where(and(userFilter, dateFilter))
+      .groupBy(entries.category)
+      .orderBy(sql`SUM(${entries.amount}) DESC`)
+      .limit(1),
 
-  // Biggest day
-  const [biggestDay] = await db
-    .select({
-      date: sql<string>`((${entries.createdAt})::date)::text`.as("day"),
-      total: sql<number>`SUM(${entries.amount})`.as("total"),
-    })
-    .from(entries)
-    .where(and(userFilter, dateFilter))
-    .groupBy(sql`(${entries.createdAt})::date`)
-    .orderBy(sql`SUM(${entries.amount}) DESC`)
-    .limit(1);
+    // Biggest spending day
+    db
+      .select({
+        date: sql<string>`((${entries.createdAt})::date)::text`.as("day"),
+        total: sql<number>`SUM(${entries.amount})`.as("total"),
+      })
+      .from(entries)
+      .where(and(userFilter, dateFilter))
+      .groupBy(sql`(${entries.createdAt})::date`)
+      .orderBy(sql`SUM(${entries.amount}) DESC`)
+      .limit(1),
 
-  // Previous month comparison
-  const prevMonth = month === 1 ? 12 : month - 1;
-  const prevYear = month === 1 ? year - 1 : year;
-  const prevRange = getMonthRange(prevYear, prevMonth);
-  const prevDateFilter = sql`(${entries.createdAt})::date >= ${prevRange.start}::date AND (${entries.createdAt})::date <= ${prevRange.end}::date`;
+    // Previous month total
+    db
+      .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
+      .from(entries)
+      .where(and(userFilter, prevDateFilter)),
 
-  const [prevTotal] = await db
-    .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
-    .from(entries)
-    .where(and(userFilter, prevDateFilter));
+    // Food spending
+    db
+      .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
+      .from(entries)
+      .where(and(userFilter, dateFilter, eq(entries.category, "food"))),
 
-  let prevTopChangeCategory: string | null = null;
-  if (prevTotal && prevTotal.total > 0) {
-    const prevCategories = await db
+    // Previous month category breakdown
+    db
       .select({
         category: entries.category,
         total: sql<number>`SUM(${entries.amount})`,
       })
       .from(entries)
       .where(and(userFilter, prevDateFilter))
-      .groupBy(entries.category);
+      .groupBy(entries.category),
 
-    const currentCategories = await db
+    // Current month category breakdown (for diff)
+    db
       .select({
         category: entries.category,
         total: sql<number>`SUM(${entries.amount})`,
       })
       .from(entries)
       .where(and(userFilter, dateFilter))
-      .groupBy(entries.category);
+      .groupBy(entries.category),
+  ]);
 
+  // Compute top-change category
+  let prevTopChangeCategory: string | null = null;
+  if (prevTotal && prevTotal.total > 0) {
     const prevMap = new Map(prevCategories.map((c) => [c.category, c.total]));
     let maxDiff = 0;
     for (const cat of currentCategories) {
@@ -141,12 +156,6 @@ export async function GET(req: NextRequest) {
       }
     }
   }
-
-  // Food spending (for fun fact)
-  const [foodSpending] = await db
-    .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
-    .from(entries)
-    .where(and(userFilter, dateFilter, eq(entries.category, "food")));
 
   return NextResponse.json({
     hasData: true,
@@ -197,12 +206,7 @@ export async function POST(req: NextRequest) {
   const [existing] = await db
     .select()
     .from(wrappedDismissals)
-    .where(
-      and(
-        eq(wrappedDismissals.userId, user.id),
-        eq(wrappedDismissals.monthKey, monthKey)
-      )
-    )
+    .where(and(eq(wrappedDismissals.userId, user.id), eq(wrappedDismissals.monthKey, monthKey)))
     .limit(1);
 
   if (!existing) {
