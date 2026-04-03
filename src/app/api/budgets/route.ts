@@ -16,29 +16,31 @@ export async function GET() {
   const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
 
-  const allBudgets = await db
-    .select()
-    .from(budgets)
-    .where(
-      and(
-        eq(budgets.userId, user.id),
-        or(eq(budgets.isRecurring, true), eq(budgets.appliedFrom, monthKey))
+  // Parallelize both DB queries (Fix #6)
+  const [allBudgets, spending] = await Promise.all([
+    db
+      .select()
+      .from(budgets)
+      .where(
+        and(
+          eq(budgets.userId, user.id),
+          or(eq(budgets.isRecurring, true), eq(budgets.appliedFrom, monthKey))
+        )
+      ),
+    db
+      .select({
+        category: entries.category,
+        total: sql<number>`COALESCE(SUM(${entries.amount}), 0)`.as("total"),
+      })
+      .from(entries)
+      .where(
+        and(
+          eq(entries.userId, user.id),
+          sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`
+        )
       )
-    );
-
-  const spending = await db
-    .select({
-      category: entries.category,
-      total: sql<number>`COALESCE(SUM(${entries.amount}), 0)`.as("total"),
-    })
-    .from(entries)
-    .where(
-      and(
-        eq(entries.userId, user.id),
-        sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`
-      )
-    )
-    .groupBy(entries.category);
+      .groupBy(entries.category),
+  ]);
 
   const spendingMap = new Map(spending.map((s) => [s.category, s.total]));
 
@@ -47,7 +49,9 @@ export async function GET() {
     spent: spendingMap.get(b.categoryId) ?? 0,
   }));
 
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120' },
+  });
 }
 
 export async function POST(req: NextRequest) {

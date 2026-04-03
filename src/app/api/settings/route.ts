@@ -16,7 +16,9 @@ export async function GET() {
   for (const row of rows) {
     obj[row.key] = row.value;
   }
-  return NextResponse.json(obj);
+  return NextResponse.json(obj, {
+    headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' },
+  });
 }
 
 export async function PUT(req: NextRequest) {

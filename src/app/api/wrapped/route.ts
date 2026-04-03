@@ -66,7 +66,9 @@ export async function GET(req: NextRequest) {
   const entryCount = totalResult?.count ?? 0;
 
   if (entryCount === 0) {
-    return NextResponse.json({ hasData: false, dismissed: !!dismissed, monthKey });
+    return NextResponse.json({ hasData: false, dismissed: !!dismissed, monthKey }, {
+      headers: { 'Cache-Control': 'private, max-age=0, stale-while-revalidate=300' },
+    });
   }
 
   // ── Batch 2: all remaining queries in parallel ─────────────────────────────
@@ -157,6 +159,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const cacheHeaders = { 'Cache-Control': 'private, max-age=0, stale-while-revalidate=300' };
+
   return NextResponse.json({
     hasData: true,
     dismissed: !!dismissed,
@@ -188,7 +192,7 @@ export async function GET(req: NextRequest) {
       topChangeCategory: prevTopChangeCategory,
     },
     foodSpending: foodSpending?.total ?? 0,
-  });
+  }, { headers: cacheHeaders });
 }
 
 // POST - dismiss wrapped for a month

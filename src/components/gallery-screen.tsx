@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Settings as SettingsIcon, Image as ImageIcon } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -18,19 +18,27 @@ import type { Entry } from "@/db/schema";
 
 type Filter = "week" | "month" | "all";
 
-export function GalleryScreen() {
+interface GalleryScreenProps {
+  initialEntries?: Entry[];
+  initialStreak?: number;
+}
+
+export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenProps = {}) {
   const { t } = useLanguage();
-  const [entries, setEntries] = useState<Entry[]>([]);
+  const [entries, setEntries] = useState<Entry[]>(initialEntries ?? []);
   const [filter, setFilter] = useState<Filter>("all");
-  const [loading, setLoading] = useState(true);
+  // If server prefetched entries, start without loading spinner
+  const [loading, setLoading] = useState(!initialEntries);
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Entry | null>(null);
   const [selectedDate, setSelectedDate] = useState(getDateOnly(new Date().toISOString()));
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddDate, setQuickAddDate] = useState<string | undefined>(undefined);
-  const [currentStreak, setCurrentStreak] = useState(0);
+  const [currentStreak, setCurrentStreak] = useState(initialStreak ?? 0);
   const [wrappedData, setWrappedData] = useState<WrappedData | null>(null);
   const [showWrapped, setShowWrapped] = useState(false);
+  // Track whether we should skip the first "all" fetch (already have server data)
+  const skipInitialFetch = useRef(!!initialEntries);
 
   const fetchEntries = useCallback(async () => {
     setLoading(true);
@@ -45,38 +53,29 @@ export function GalleryScreen() {
   }, [filter]);
 
   useEffect(() => {
+    // Skip initial fetch for "all" filter when server already provided data (Fix #7)
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
+      return;
+    }
     fetchEntries();
   }, [fetchEntries]);
 
-  // Fetch streak data
+  // Fetch streak + wrapped in parallel on mount (Fix #5)
   useEffect(() => {
-    apiFetch("/api/streak")
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (data) setCurrentStreak(data.currentStreak ?? 0);
-      })
-      .catch(() => {});
-  }, []);
-
-  // Check for monthly wrapped (on 1st of month or on demand)
-  useEffect(() => {
-    apiFetch("/api/wrapped")
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (data?.hasData && !data.dismissed) {
-          const now = new Date();
-          // Auto-show on 1st of month
-          if (now.getDate() <= 3) {
-            setWrappedData(data);
-            setShowWrapped(true);
-          } else {
-            setWrappedData(data);
-          }
-        } else if (data?.hasData) {
-          setWrappedData(data);
-        }
-      })
-      .catch(() => {});
+    Promise.all([
+      apiFetch("/api/streak").then((res) => res.ok ? res.json() : null).catch(() => null),
+      apiFetch("/api/wrapped").then((res) => res.ok ? res.json() : null).catch(() => null),
+    ]).then(([streakData, wrappedResult]) => {
+      if (streakData) setCurrentStreak(streakData.currentStreak ?? 0);
+      if (wrappedResult?.hasData && !wrappedResult.dismissed) {
+        const now = new Date();
+        setWrappedData(wrappedResult);
+        if (now.getDate() <= 3) setShowWrapped(true);
+      } else if (wrappedResult?.hasData) {
+        setWrappedData(wrappedResult);
+      }
+    });
   }, []);
 
   const handleDelete = useCallback(async (entry: Entry) => {
@@ -128,12 +127,14 @@ export function GalleryScreen() {
   const handleQuickAddSaved = useCallback(() => {
     setQuickAddOpen(false);
     setQuickAddDate(undefined);
-    fetchEntries();
-    // Refresh streak
-    apiFetch("/api/streak")
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (data) setCurrentStreak(data.currentStreak ?? 0); })
-      .catch(() => {});
+    // Parallelize entries + streak refresh (Fix #5)
+    Promise.all([
+      fetchEntries(),
+      apiFetch("/api/streak")
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => { if (data) setCurrentStreak(data.currentStreak ?? 0); })
+        .catch(() => {}),
+    ]);
   }, [fetchEntries]);
 
   const handleDismissWrapped = useCallback(() => {

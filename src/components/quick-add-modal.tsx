@@ -162,36 +162,35 @@ export function QuickAddModal({ open, onClose, onSaved, initialDate }: QuickAddM
       triggerHaptic();
       setToastVisible(true);
 
-      // Update streak
-      try {
-        const streakRes = await apiFetch("/api/streak", { method: "POST" });
-        if (streakRes.ok) {
-          const streakData = await streakRes.json();
-          if (streakData.milestone) {
-            setMilestone(streakData.milestone);
-          }
-        }
-      } catch {}
+      // Parallelize streak update + budget check (Fix #1 + #2)
+      const [streakRes, budgetResult] = await Promise.all([
+        apiFetch("/api/streak", { method: "POST" }).catch(() => null),
+        checkBudget(category).catch(() => null),
+      ]);
 
-      // Check budget after save
-      const budgetResult = await checkBudget(category);
-      if (budgetResult.hasBudget && budgetResult.exceeded) {
+      if (streakRes?.ok) {
+        const streakData = await streakRes.json();
+        if (streakData.milestone) {
+          setMilestone(streakData.milestone);
+        }
+      }
+
+      if (budgetResult?.hasBudget && budgetResult.exceeded) {
         setBudgetAlert({
           show: true,
           title: t.budget.alertExceededTitle,
           desc: t.budget.alertExceededDesc.replace("{category}", category),
         });
-      } else if (budgetResult.hasBudget && budgetResult.warning) {
+      } else if (budgetResult?.hasBudget && budgetResult.warning) {
         setBudgetWarningToast({
           visible: true,
           message: t.budget.alertNear.replace("{category}", category).replace("{pct}", String(budgetResult.pct)),
         });
       }
 
-      setTimeout(() => {
-        onSaved();
-        handleClose();
-      }, 1200);
+      // Navigate immediately — no 1200ms delay
+      onSaved();
+      handleClose();
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : t.capture.failedSave);
     } finally {
