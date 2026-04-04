@@ -35,7 +35,7 @@ export function BottomTabs() {
               key={tab.href}
               href={tab.href}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs transition-colors",
+                "flex min-w-0 flex-1 flex-col items-center gap-0.5 px-2 py-1.5 text-xs [transition:color_150ms_ease,filter_150ms_ease]",
                 isActive
                   ? "text-amber-400"
                   : "text-gray-500 hover:text-gray-300"
@@ -43,11 +43,11 @@ export function BottomTabs() {
             >
               <tab.icon
                 className={cn(
-                  "h-5 w-5",
+                  "h-5 w-5 shrink-0",
                   isActive && "drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
                 )}
               />
-              <span className="font-medium">{tab.label}</span>
+              <span className="w-full truncate text-center font-medium">{tab.label}</span>
             </Link>
           );
         })}
