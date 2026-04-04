@@ -10,6 +10,7 @@ import { GalleryDayGroups, type EntryGroup } from "@/components/gallery-day-grou
 import { EntryDetailModal } from "@/components/entry-detail-modal";
 import { DeleteEntryDialog } from "@/components/delete-entry-dialog";
 import { HistoryCalendarPanel } from "@/components/history-calendar-panel";
+import { DayDetailModal } from "@/components/day-detail-modal";
 import { FabButton } from "@/components/fab-button";
 import { QuickAddModal } from "@/components/quick-add-modal";
 import { StreakBadge } from "@/components/streak-badge";
@@ -34,6 +35,7 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
   const [selectedDate, setSelectedDate] = useState(getDateOnly(new Date().toISOString()));
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddDate, setQuickAddDate] = useState<string | undefined>(undefined);
+  const [dayDetailOpen, setDayDetailOpen] = useState(false);
   const [currentStreak, setCurrentStreak] = useState(initialStreak ?? 0);
   const [wrappedData, setWrappedData] = useState<WrappedData | null>(null);
   const [showWrapped, setShowWrapped] = useState(false);
@@ -121,6 +123,8 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
     if (!hasEntries) {
       setQuickAddDate(dateKey);
       setQuickAddOpen(true);
+    } else {
+      setDayDetailOpen(true);
     }
   }, [entries]);
 
@@ -147,6 +151,11 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
       }).catch(() => {});
     }
   }, [wrappedData]);
+
+  const handleDayDetailSelectEntry = useCallback((entry: Entry) => {
+    setSelectedEntry(entry);
+    setDayDetailOpen(false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-950 pb-24">
@@ -185,11 +194,8 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
           <HistoryCalendarPanel
             selectedDate={selectedDate}
             markedDates={markedDates}
-            selectedEntries={selectedEntries}
             allEntries={entries}
             onSelectDate={handleDateSelect}
-            onSelectEntry={setSelectedEntry}
-            onDeleteEntry={setDeleteConfirm}
           />
 
           <section>
@@ -243,6 +249,15 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
 
       {selectedEntry ? <EntryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} onDelete={setDeleteConfirm} /> : null}
       {deleteConfirm ? <DeleteEntryDialog entry={deleteConfirm} onCancel={() => setDeleteConfirm(null)} onConfirm={handleDelete} /> : null}
+
+      <DayDetailModal
+        open={dayDetailOpen}
+        onClose={() => setDayDetailOpen(false)}
+        selectedDate={selectedDate}
+        selectedEntries={selectedEntries}
+        onSelectEntry={handleDayDetailSelectEntry}
+        onDeleteEntry={setDeleteConfirm}
+      />
 
       {/* Monthly Wrapped */}
       {showWrapped && wrappedData && wrappedData.hasData && (
