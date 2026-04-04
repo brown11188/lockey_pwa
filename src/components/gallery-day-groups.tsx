@@ -117,7 +117,39 @@ function PhotoStackGroup({
               ))}
             </div>
           )}
+        </button>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {group.entries.map((entry) => (
+            <PhotoCard
+              key={entry.id}
+              entry={entry}
+              onClick={() => onSelectEntry(entry)}
+              onLongPress={() => onDeleteEntry(entry)}
+            />
+          ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+export function GalleryDayGroups({
+  groups,
+  stickyHeader,
+  onSelectEntry,
+  onDeleteEntry,
+}: GalleryDayGroupsProps) {
+  return (
+    <div className="space-y-6">
+      {groups.map((group) => (
+        <PhotoStackGroup
+          key={group.date}
+          group={group}
+          stickyHeader={stickyHeader}
+          onSelectEntry={onSelectEntry}
+          onDeleteEntry={onDeleteEntry}
+        />
       ))}
     </div>
   );
