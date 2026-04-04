@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
  * POST /api/budgets/check
  * Body: { categoryId: string }
  * Returns the budget status for the given category this month.
+ * Checks global "__all__" budget first (total spending), then falls back to category-specific budget.
  */
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
@@ -26,6 +27,47 @@ export async function POST(req: NextRequest) {
   const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
 
+  // Check for global budget first
+  const [globalBudget] = await db
+    .select()
+    .from(budgets)
+    .where(
+      and(
+        eq(budgets.userId, user.id),
+        eq(budgets.categoryId, "__all__"),
+        or(eq(budgets.isRecurring, true), eq(budgets.appliedFrom, monthKey))
+      )
+    )
+    .limit(1);
+
+  if (globalBudget) {
+    const [totalSpending] = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(${entries.amount}), 0)`.as("total"),
+      })
+      .from(entries)
+      .where(
+        and(
+          eq(entries.userId, user.id),
+          sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`
+        )
+      );
+
+    const spent = totalSpending?.total ?? 0;
+    const pct = globalBudget.monthlyBudget > 0 ? Math.round((spent / globalBudget.monthlyBudget) * 100) : 0;
+
+    return NextResponse.json({
+      hasBudget: true,
+      categoryId: "__all__",
+      monthlyBudget: globalBudget.monthlyBudget,
+      spent,
+      pct,
+      exceeded: pct >= 100,
+      warning: pct >= 80 && pct < 100,
+    });
+  }
+
+  // Fall back to category-specific budget
   const [budget] = await db
     .select()
     .from(budgets)
