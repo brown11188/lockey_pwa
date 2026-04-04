@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Plus as PlusIcon, Zap as ZapIcon, CalendarDays as CalendarDaysIcon, ReceiptText as ReceiptTextIcon, Wallet as WalletIcon } from "lucide-react";
 import { MonthCalendar, type CalendarDayMeta } from "@/components/month-calendar";
 import { PhotoCard } from "@/components/photo-card";
+import { PhotoGroupStack } from "@/components/photo-group-stack";
 import { formatCurrency, formatDateGroup, getMonthKey } from "@/lib/format";
 import { useCurrency } from "@/lib/currency-context";
 import { useLanguage } from "@/lib/language-context";
@@ -139,15 +140,25 @@ export function HistoryCalendarPanel({
         </Link>
 
         {selectedEntries.length > 0 ? (
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {selectedEntries.map((entry) => (
-              <PhotoCard
-                key={entry.id}
-                entry={entry}
-                onClick={() => onSelectEntry(entry)}
-                onLongPress={() => onDeleteEntry(entry)}
+          <div className="mt-4">
+            {selectedEntries.filter((e) => e.photoUri || e.photoId).length >= 2 ? (
+              <PhotoGroupStack
+                entries={selectedEntries}
+                onSelectEntry={onSelectEntry}
+                onDeleteEntry={onDeleteEntry}
               />
-            ))}
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {selectedEntries.map((entry) => (
+                  <PhotoCard
+                    key={entry.id}
+                    entry={entry}
+                    onClick={() => onSelectEntry(entry)}
+                    onLongPress={() => onDeleteEntry(entry)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="mt-4 rounded-xl border border-dashed border-white/10 bg-gray-950/50 px-4 py-6 text-center">

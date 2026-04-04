@@ -1,6 +1,7 @@
 "use client";
 
 import { PhotoCard } from "@/components/photo-card";
+import { PhotoGroupStack } from "@/components/photo-group-stack";
 import { formatCurrency } from "@/lib/format";
 import { useCurrency } from "@/lib/currency-context";
 import type { Entry } from "@/db/schema";
@@ -42,16 +43,24 @@ export function GalleryDayGroups({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {group.entries.map((entry) => (
-              <PhotoCard
-                key={entry.id}
-                entry={entry}
-                onClick={() => onSelectEntry(entry)}
-                onLongPress={() => onDeleteEntry(entry)}
-              />
-            ))}
-          </div>
+          {group.entries.filter((e) => e.photoUri || e.photoId).length >= 2 ? (
+            <PhotoGroupStack
+              entries={group.entries}
+              onSelectEntry={onSelectEntry}
+              onDeleteEntry={onDeleteEntry}
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {group.entries.map((entry) => (
+                <PhotoCard
+                  key={entry.id}
+                  entry={entry}
+                  onClick={() => onSelectEntry(entry)}
+                  onLongPress={() => onDeleteEntry(entry)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
