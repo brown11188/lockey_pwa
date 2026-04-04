@@ -35,7 +35,7 @@ export function BottomTabs() {
               key={tab.href}
               href={tab.href}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs transition-colors",
+                "flex flex-1 flex-col items-center gap-0.5 py-1.5 text-xs transition-colors",
                 isActive
                   ? "text-amber-400"
                   : "text-gray-500 hover:text-gray-300"
