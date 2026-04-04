@@ -97,6 +97,8 @@ export const vi: Translations = {
     deleteEntry: "Xoá khoản chi",
     deleteConfirmTitle: "Xoá khoản chi?",
     deleteConfirmDesc: "Khoản chi tiêu này và ảnh sẽ bị xoá vĩnh viễn.",
+    stackTapHint: "Ảnh · chạm để xem",
+    stackCollapse: "Thu gọn",
   },
 
   stats: {

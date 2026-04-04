@@ -97,6 +97,8 @@ export const en: Translations = {
     deleteEntry: "Delete Entry",
     deleteConfirmTitle: "Delete Entry?",
     deleteConfirmDesc: "This will permanently delete this spending entry and its photo.",
+    stackTapHint: "photos · tap to expand",
+    stackCollapse: "Collapse",
   },
 
   stats: {
