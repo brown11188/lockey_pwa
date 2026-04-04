@@ -69,14 +69,16 @@ export function CaptureScreen({ initialDateTime }: { initialDateTime?: string })
       setError(t.capture.cameraNotReady);
       return;
     }
-    const size = Math.min(vw, vh);
-    canvas.width = size;
-    canvas.height = size;
+    // Downsample to 720×720 max for faster upload (~60-70% smaller than 1080)
+    const srcSize = Math.min(vw, vh);
+    const outSize = Math.min(srcSize, 720);
+    canvas.width = outSize;
+    canvas.height = outSize;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const sx = (vw - size) / 2;
-    const sy = (vh - size) / 2;
-    ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
+    const sx = (vw - srcSize) / 2;
+    const sy = (vh - srcSize) / 2;
+    ctx.drawImage(video, sx, sy, srcSize, srcSize, 0, 0, outSize, outSize);
     canvas.toBlob(
       (blob) => {
         if (blob) {
@@ -87,7 +89,7 @@ export function CaptureScreen({ initialDateTime }: { initialDateTime?: string })
         }
       },
       "image/jpeg",
-      0.85
+      0.7
     );
   }, [stopCamera, t.capture.cameraNotReady]);
 

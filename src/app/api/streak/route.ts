@@ -115,69 +115,39 @@ export async function POST() {
   const milestone = STREAK_MILESTONES.find((m) => m.days === newStreak) ?? null;
   const newBadges: string[] = [];
 
-  const hasBadge = async (badgeId: string) => {
-    const [row] = await db
-      .select()
-      .from(badges)
-      .where(and(eq(badges.userId, user.id), eq(badges.badgeId, badgeId)))
-      .limit(1);
-    return !!row;
-  };
-  const awardBadge = async (badgeId: string) => {
-    if (!(await hasBadge(badgeId))) {
-      await db.insert(badges).values({ userId: user.id, badgeId });
-      newBadges.push(badgeId);
-    }
-  };
-
-  // first_expense badge
-  const [totalEntries] = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(entries)
-    .where(eq(entries.userId, user.id));
-  if (totalEntries && totalEntries.count >= 1) await awardBadge("first_expense");
-
-  // streak badges
-  if (newStreak >= 7) await awardBadge("streak_7");
-  if (newStreak >= 30) await awardBadge("streak_30");
-
-  // photos_50
-  const [photoCount] = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(entries)
-    .where(and(eq(entries.userId, user.id), sql`${entries.photoId} IS NOT NULL`));
-  if (photoCount && photoCount.count >= 50) await awardBadge("photos_50");
-
-  // food_lover (10 food entries this month)
+  // Fetch all existing badges + all counts in parallel (1 batch instead of 7+ sequential queries)
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}-01`;
   const monthEnd = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}-31`;
 
-  const [foodCount] = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(entries)
-    .where(
-      and(
-        eq(entries.userId, user.id),
-        eq(entries.category, "food"),
-        sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`
-      )
+  const [existingBadges, [totalEntries], [photoCount], [foodCount], [travelCount], [gameCount]] = await Promise.all([
+    db.select({ badgeId: badges.badgeId }).from(badges).where(eq(badges.userId, user.id)),
+    db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(eq(entries.userId, user.id)),
+    db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(and(eq(entries.userId, user.id), sql`${entries.photoId} IS NOT NULL`)),
+    db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(and(eq(entries.userId, user.id), eq(entries.category, "food"), sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`)),
+    db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(and(eq(entries.userId, user.id), eq(entries.category, "travel"))),
+    db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(and(eq(entries.userId, user.id), eq(entries.category, "entertainment"))),
+  ]);
+
+  const ownedBadges = new Set(existingBadges.map((b) => b.badgeId));
+  const toAward: string[] = [];
+
+  // Determine which badges to award
+  if (totalEntries?.count >= 1 && !ownedBadges.has("first_expense")) toAward.push("first_expense");
+  if (newStreak >= 7 && !ownedBadges.has("streak_7")) toAward.push("streak_7");
+  if (newStreak >= 30 && !ownedBadges.has("streak_30")) toAward.push("streak_30");
+  if (photoCount?.count >= 50 && !ownedBadges.has("photos_50")) toAward.push("photos_50");
+  if (foodCount?.count >= 10 && !ownedBadges.has("food_lover")) toAward.push("food_lover");
+  if (travelCount?.count >= 3 && !ownedBadges.has("traveler")) toAward.push("traveler");
+  if (gameCount?.count >= 5 && !ownedBadges.has("gamer")) toAward.push("gamer");
+
+  // Insert all new badges in parallel
+  if (toAward.length > 0) {
+    await Promise.all(
+      toAward.map((badgeId) => db.insert(badges).values({ userId: user.id, badgeId }))
     );
-  if (foodCount && foodCount.count >= 10) await awardBadge("food_lover");
-
-  // traveler (3 travel entries)
-  const [travelCount] = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(entries)
-    .where(and(eq(entries.userId, user.id), eq(entries.category, "travel")));
-  if (travelCount && travelCount.count >= 3) await awardBadge("traveler");
-
-  // gamer (5 entertainment entries)
-  const [gameCount] = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(entries)
-    .where(and(eq(entries.userId, user.id), eq(entries.category, "entertainment")));
-  if (gameCount && gameCount.count >= 5) await awardBadge("gamer");
+    newBadges.push(...toAward);
+  }
 
   return NextResponse.json({
     currentStreak: newStreak,

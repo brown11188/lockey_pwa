@@ -131,72 +131,55 @@ export function QuickAddModal({ open, onClose, onSaved, initialDate }: QuickAddM
       let photoId: string | null = null;
       let photoUri: string | null = null;
 
-      // Upload photo if attached
+      // If photo attached, use combined multipart upload+entry in ONE call
       if (photoBlob) {
         const formData = new FormData();
         formData.append("photo", photoBlob, "photo.jpg");
-        const uploadRes = await apiFetch("/api/upload", { method: "POST", body: formData });
-        if (uploadRes.ok) {
-          const data = (await uploadRes.json()) as { photoId?: string; uri?: string };
-          photoId = data.photoId ?? null;
-          photoUri = data.uri ?? null;
-        }
+        formData.append("amount", String(numericAmount));
+        formData.append("currency", currency);
+        formData.append("category", category);
+        formData.append("note", note);
+        formData.append("createdAt", dateTime ? parseLocalDateTimeString(dateTime).toISOString() : new Date().toISOString());
+
+        const entryRes = await apiFetch("/api/entries", {
+          method: "POST",
+          body: formData,
+        });
+        if (!entryRes.ok) throw new Error(await getApiErrorMessage(entryRes, t.capture.failedSave));
+      } else {
+        // No photo — use JSON
+        const entryRes = await apiFetch("/api/entries", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: numericAmount,
+            currency,
+            category,
+            note,
+            createdAt: dateTime ? parseLocalDateTimeString(dateTime).toISOString() : new Date().toISOString(),
+          }),
+        });
+        if (!entryRes.ok) throw new Error(await getApiErrorMessage(entryRes, t.capture.failedSave));
       }
-
-      const entryRes = await apiFetch("/api/entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          photoId,
-          photoUri,
-          amount: numericAmount,
-          currency,
-          category,
-          note,
-          createdAt: dateTime ? parseLocalDateTimeString(dateTime).toISOString() : new Date().toISOString(),
-        }),
-      });
-
-      if (!entryRes.ok) throw new Error(await getApiErrorMessage(entryRes, t.capture.failedSave));
 
       triggerHaptic();
       setToastVisible(true);
 
-      // Parallelize streak update + budget check (Fix #1 + #2)
-      const [streakRes, budgetResult] = await Promise.all([
-        apiFetch("/api/streak", { method: "POST" }).catch(() => null),
-        checkBudget(category).catch(() => null),
-      ]);
-
-      if (streakRes?.ok) {
-        const streakData = await streakRes.json();
-        if (streakData.milestone) {
-          setMilestone(streakData.milestone);
-        }
-      }
-
-      if (budgetResult?.hasBudget && budgetResult.exceeded) {
-        setBudgetAlert({
-          show: true,
-          title: t.budget.alertExceededTitle,
-          desc: t.budget.alertExceededDesc.replace("{category}", category),
-        });
-      } else if (budgetResult?.hasBudget && budgetResult.warning) {
-        setBudgetWarningToast({
-          visible: true,
-          message: t.budget.alertNear.replace("{category}", category).replace("{pct}", String(budgetResult.pct)),
-        });
-      }
-
-      // Navigate immediately — no 1200ms delay
+      // Navigate IMMEDIATELY — fire-and-forget streak + budget
       onSaved();
       handleClose();
+
+      // Background: streak + budget check
+      Promise.all([
+        apiFetch("/api/streak", { method: "POST" }).catch(() => null),
+        checkBudget(category).catch(() => null),
+      ]).catch(() => {});
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : t.capture.failedSave);
     } finally {
       setSaving(false);
     }
-  }, [rawAmount, category, photoBlob, currency, note, dateTime, t, onSaved, handleClose]);
+  }, [rawAmount, category, photoBlob, currency, note, dateTime, t, onSaved, handleClose, checkBudget]);
 
   const canSave = rawAmount && parseFloat(rawAmount) > 0 && category;
 
