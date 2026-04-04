@@ -43,10 +43,11 @@ export async function GET() {
   ]);
 
   const spendingMap = new Map(spending.map((s) => [s.category, s.total]));
+  const totalSpent = spending.reduce((sum, s) => sum + s.total, 0);
 
   const result = allBudgets.map((b) => ({
     ...b,
-    spent: spendingMap.get(b.categoryId) ?? 0,
+    spent: b.categoryId === "__all__" ? totalSpent : (spendingMap.get(b.categoryId) ?? 0),
   }));
 
   return NextResponse.json(result, {

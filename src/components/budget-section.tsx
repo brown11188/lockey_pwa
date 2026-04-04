@@ -5,15 +5,15 @@ import { apiFetch } from "@/lib/api";
 import { useCurrency } from "@/lib/currency-context";
 import { useLanguage } from "@/lib/language-context";
 import { formatCurrency } from "@/lib/format";
-import { CATEGORIES, getCategoryInfo } from "@/lib/constants";
 import { Toast, triggerHaptic } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   Target as TargetIcon,
-  Plus as PlusIcon,
   Trash2 as Trash2Icon,
 } from "lucide-react";
 import type { Budget } from "@/db/schema";
+
+const ALL_CATEGORIES_ID = "__all__";
 
 interface BudgetWithSpent extends Budget {
   spent: number;
@@ -21,40 +21,57 @@ interface BudgetWithSpent extends Budget {
 
 interface SetBudgetModalProps {
   open: boolean;
-  categoryId: string;
-  categoryLabel: string;
   currentAmount: number;
   isRecurring: boolean;
+  currency: string;
   onClose: () => void;
-  onSave: (categoryId: string, amount: number, isRecurring: boolean) => void;
+  onSave: (amount: number, isRecurring: boolean) => void;
 }
 
-function SetBudgetModal({ open, categoryId, categoryLabel, currentAmount, isRecurring: initRecurring, onClose, onSave }: SetBudgetModalProps) {
+function SetBudgetModal({ open, currentAmount, isRecurring: initRecurring, currency, onClose, onSave }: SetBudgetModalProps) {
   const { t } = useLanguage();
-  const [amount, setAmount] = useState("");
+  const [rawAmount, setRawAmount] = useState("");
   const [isRecurring, setIsRecurring] = useState(true);
 
   useEffect(() => {
     if (open) {
-      setAmount(currentAmount > 0 ? String(currentAmount) : "");
+      setRawAmount(currentAmount > 0 ? String(currentAmount) : "");
       setIsRecurring(initRecurring);
     }
   }, [open, currentAmount, initRecurring]);
 
+  const formatDisplay = (raw: string): string => {
+    if (!raw) return "";
+    const parts = raw.split(".");
+    const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const formatted = parts.length > 1 ? `${intPart}.${parts[1]}` : intPart;
+    return currency === "VND" ? `${formatted}\u20AB` : `$${formatted}`;
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const stripped = e.target.value.replace(/[^0-9.]/g, "");
+    // Keep only the first decimal point
+    const parts = stripped.split(".");
+    const cleaned = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join("")}` : parts[0];
+    setRawAmount(cleaned);
+  };
+
   if (!open) return null;
+
+  const numericValue = parseFloat(rawAmount) || 0;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="mx-6 w-full max-w-sm rounded-2xl border border-white/10 bg-gray-900 p-6">
         <h3 className="text-lg font-bold text-white">
-          {t.budget.setBudgetTitle} — {categoryLabel}
+          {t.budget.setBudgetTitle}
         </h3>
         <div className="mt-4">
           <input
-            type="number"
+            type="text"
             inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            value={formatDisplay(rawAmount)}
+            onChange={handleAmountChange}
             placeholder={t.budget.amountPlaceholder}
             className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xl font-bold text-amber-400 placeholder:text-gray-600 focus:border-amber-500/50 focus:outline-none"
             autoFocus
@@ -98,10 +115,9 @@ function SetBudgetModal({ open, categoryId, categoryLabel, currentAmount, isRecu
           <button
             type="button"
             onClick={() => {
-              const val = parseFloat(amount);
-              if (val > 0) onSave(categoryId, val, isRecurring);
+              if (numericValue > 0) onSave(numericValue, isRecurring);
             }}
-            disabled={!amount || parseFloat(amount) <= 0}
+            disabled={!rawAmount || numericValue <= 0}
             className="flex-1 rounded-xl bg-amber-500 py-3 text-sm font-bold text-gray-950 transition-all hover:bg-amber-400 disabled:opacity-40"
           >
             {t.common.save}
@@ -125,10 +141,6 @@ export function BudgetSection() {
   const [budgetsData, setBudgetsData] = useState<BudgetWithSpent[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalCategory, setModalCategory] = useState("");
-  const [modalLabel, setModalLabel] = useState("");
-  const [modalAmount, setModalAmount] = useState(0);
-  const [modalRecurring, setModalRecurring] = useState(true);
   const [deleteBudget, setDeleteBudget] = useState<BudgetWithSpent | null>(null);
   const [toast, setToast] = useState({ visible: false, message: "", type: "success" as "success" | "error" });
 
@@ -147,20 +159,18 @@ export function BudgetSection() {
     fetchBudgets();
   }, [fetchBudgets]);
 
-  const openSetBudget = useCallback((catId: string, catLabel: string, current: number, recurring: boolean) => {
-    setModalCategory(catId);
-    setModalLabel(catLabel);
-    setModalAmount(current);
-    setModalRecurring(recurring);
-    setModalOpen(true);
-  }, []);
+  // Global budget is the single budget for all categories
+  const globalBudget = useMemo(
+    () => budgetsData.find((b) => b.categoryId === ALL_CATEGORIES_ID) ?? null,
+    [budgetsData]
+  );
 
-  const handleSaveBudget = useCallback(async (categoryId: string, amount: number, isRecurring: boolean) => {
+  const handleSaveBudget = useCallback(async (amount: number, isRecurring: boolean) => {
     try {
       await apiFetch("/api/budgets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categoryId, monthlyBudget: amount, currency, isRecurring }),
+        body: JSON.stringify({ categoryId: ALL_CATEGORIES_ID, monthlyBudget: amount, currency, isRecurring }),
       });
       triggerHaptic();
       setModalOpen(false);
@@ -183,18 +193,6 @@ export function BudgetSection() {
     }
   }, [deleteBudget]);
 
-  // Categories that have budgets
-  const budgetedCategories = useMemo(
-    () => new Set(budgetsData.map((b) => b.categoryId)),
-    [budgetsData]
-  );
-
-  // Categories without budgets
-  const unbugdetedCategories = useMemo(
-    () => CATEGORIES.filter((c) => !budgetedCategories.has(c.value)),
-    [budgetedCategories]
-  );
-
   // Calculate current week of month
   const now = new Date();
   const dayOfMonth = now.getDate();
@@ -202,6 +200,11 @@ export function BudgetSection() {
   const totalWeeks = Math.ceil(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() / 7);
 
   if (loading) return null;
+
+  const pct = globalBudget && globalBudget.monthlyBudget > 0
+    ? Math.round((globalBudget.spent / globalBudget.monthlyBudget) * 100)
+    : 0;
+  const exceeded = pct >= 100;
 
   return (
     <div className="mt-6">
@@ -212,104 +215,80 @@ export function BudgetSection() {
         </h2>
       </div>
 
-      {budgetsData.length === 0 ? (
+      {!globalBudget ? (
         <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-center">
           <p className="text-sm text-gray-500">{t.budget.noBudgets}</p>
           <p className="mt-1 text-xs text-gray-600">{t.budget.noBudgetsHint}</p>
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/20 px-4 py-2 text-sm font-medium text-amber-300 transition-colors hover:bg-amber-500/30"
+          >
+            + {t.budget.setBudget}
+          </button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {budgetsData.map((b) => {
-            const info = getCategoryInfo(b.categoryId, t.categories);
-            const pct = b.monthlyBudget > 0 ? Math.round((b.spent / b.monthlyBudget) * 100) : 0;
-            const remaining = b.monthlyBudget - b.spent;
-            const exceeded = pct >= 100;
-
-            return (
-              <div
-                key={b.id}
-                className={`rounded-2xl border p-4 transition-all ${
-                  exceeded
-                    ? "border-red-500/20 bg-red-500/5 animate-[shake_0.5s_ease-in-out]"
-                    : "border-white/10 bg-white/5"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{info.emoji}</span>
-                    <span className="text-sm font-semibold text-white">{info.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">
-                      {weekOfMonth}/{totalWeeks} {t.budget.weekLabel}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => openSetBudget(b.categoryId, `${info.emoji} ${info.label}`, b.monthlyBudget, b.isRecurring)}
-                      className="text-xs text-amber-400 hover:text-amber-300"
-                    >
-                      {t.common.edit}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteBudget(b)}
-                      className="text-gray-600 hover:text-red-400"
-                    >
-                      <Trash2Icon className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-white/5">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${getProgressColor(pct)}`}
-                    style={{ width: `${Math.min(pct, 100)}%` }}
-                  />
-                </div>
-                <div className="mt-1.5 flex items-center justify-between">
-                  <span className="text-xs text-gray-400">
-                    {formatCurrency(b.spent, currency)} / {formatCurrency(b.monthlyBudget, currency)}
-                  </span>
-                  <span className={`text-xs font-semibold ${
-                    exceeded ? "text-red-400" : pct >= 71 ? "text-yellow-400" : "text-gray-500"
-                  }`}>
-                    {exceeded
-                      ? t.budget.exceededLabel
-                      : `${t.budget.remaining}: ${formatCurrency(Math.max(remaining, 0), currency)} (${pct}%)`}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Show inline "Set budget" for unbudgeted categories */}
-      {unbugdetedCategories.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {unbugdetedCategories.slice(0, 6).map((cat) => {
-            const info = getCategoryInfo(cat.value, t.categories);
-            return (
+        <div
+          className={`rounded-2xl border p-4 transition-all ${
+            exceeded
+              ? "animate-[shake_0.5s_ease-in-out] border-red-500/20 bg-red-500/5"
+              : "border-white/10 bg-white/5"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TargetIcon className="h-4 w-4 text-amber-400" />
+              <span className="text-sm font-semibold text-white">{t.budget.title}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">
+                {weekOfMonth}/{totalWeeks} {t.budget.weekLabel}
+              </span>
               <button
-                key={cat.value}
                 type="button"
-                onClick={() => openSetBudget(cat.value, `${info.emoji} ${info.label}`, 0, true)}
-                className="flex items-center gap-1 rounded-lg border border-dashed border-white/10 bg-transparent px-2.5 py-1.5 text-xs text-gray-500 transition-colors hover:border-amber-500/30 hover:text-amber-400"
+                onClick={() => setModalOpen(true)}
+                className="text-xs text-amber-400 hover:text-amber-300"
               >
-                <PlusIcon className="h-3 w-3" />
-                {info.emoji} {t.budget.setBudget}
+                {t.common.edit}
               </button>
-            );
-          })}
+              <button
+                type="button"
+                onClick={() => setDeleteBudget(globalBudget)}
+                className="text-gray-600 hover:text-red-400"
+              >
+                <Trash2Icon className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+          <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-white/5">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${getProgressColor(pct)}`}
+              style={{ width: `${Math.min(pct, 100)}%` }}
+            />
+          </div>
+          <div className="mt-1.5 flex items-center justify-between">
+            <span className="text-xs text-gray-400">
+              {formatCurrency(globalBudget.spent, currency)} / {formatCurrency(globalBudget.monthlyBudget, currency)}
+            </span>
+            <span
+              className={`text-xs font-semibold ${
+                exceeded ? "text-red-400" : pct >= 71 ? "text-yellow-400" : "text-gray-500"
+              }`}
+            >
+              {exceeded
+                ? t.budget.exceededLabel
+                : `${t.budget.remaining}: ${formatCurrency(Math.max(globalBudget.monthlyBudget - globalBudget.spent, 0), currency)} (${pct}%)`}
+            </span>
+          </div>
         </div>
       )}
 
       {/* Set Budget Modal */}
       <SetBudgetModal
         open={modalOpen}
-        categoryId={modalCategory}
-        categoryLabel={modalLabel}
-        currentAmount={modalAmount}
-        isRecurring={modalRecurring}
+        currentAmount={globalBudget?.monthlyBudget ?? 0}
+        isRecurring={globalBudget?.isRecurring ?? true}
+        currency={currency}
         onClose={() => setModalOpen(false)}
         onSave={handleSaveBudget}
       />
