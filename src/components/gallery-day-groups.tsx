@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PhotoCard } from "@/components/photo-card";
+import { PhotoGroupStack } from "@/components/photo-group-stack";
 import { formatCurrency } from "@/lib/format";
 import { useCurrency } from "@/lib/currency-context";
 import { useLanguage } from "@/lib/language-context";
@@ -98,57 +99,25 @@ function PhotoStackGroup({
             })}
           </div>
 
-          {/* Count hint */}
-          <div className="mt-2 flex items-center justify-center">
-            <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-400 ring-1 ring-amber-500/20">
-              {group.entries.length} {t.gallery.stackTapHint}
-            </span>
-          </div>
-        </button>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3">
-            {group.entries.map((entry) => (
-              <PhotoCard
-                key={entry.id}
-                entry={entry}
-                onClick={() => onSelectEntry(entry)}
-                onLongPress={() => onDeleteEntry(entry)}
-              />
-            ))}
-          </div>
-
-          {group.entries.length >= 3 && (
-            <button
-              type="button"
-              className="mt-3 w-full rounded-xl bg-white/5 py-2 text-xs font-medium text-gray-500 transition-colors hover:bg-white/10 hover:text-gray-300"
-              onClick={() => setExpanded(false)}
-            >
-              ↑ {t.gallery.stackCollapse}
-            </button>
+          {group.entries.filter((e) => e.photoUri || e.photoId).length >= 2 ? (
+            <PhotoGroupStack
+              entries={group.entries}
+              onSelectEntry={onSelectEntry}
+              onDeleteEntry={onDeleteEntry}
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {group.entries.map((entry) => (
+                <PhotoCard
+                  key={entry.id}
+                  entry={entry}
+                  onClick={() => onSelectEntry(entry)}
+                  onLongPress={() => onDeleteEntry(entry)}
+                />
+              ))}
+            </div>
           )}
-        </>
-      )}
-    </div>
-  );
-}
-
-export function GalleryDayGroups({
-  groups,
-  stickyHeader = false,
-  onSelectEntry,
-  onDeleteEntry,
-}: GalleryDayGroupsProps) {
-  return (
-    <div className="space-y-6">
-      {groups.map((group) => (
-        <PhotoStackGroup
-          key={group.date}
-          group={group}
-          stickyHeader={stickyHeader}
-          onSelectEntry={onSelectEntry}
-          onDeleteEntry={onDeleteEntry}
-        />
+        </div>
       ))}
     </div>
   );
