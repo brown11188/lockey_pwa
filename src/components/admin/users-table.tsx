@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, ChevronRight, Loader2, Users, RefreshCw } from "lucide-react";
+import { apiFetch } from "@/lib/api";
+import { RoleBadge } from "@/components/admin/role-badge";
+import { UserInitials } from "@/components/admin/user-initials";
 
 type UserRow = {
   id: string;
@@ -14,39 +17,6 @@ type UserRow = {
   subscriptionCount: number;
 };
 
-function RoleBadge({ role }: { role: string }) {
-  return (
-    <span
-      className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-mono font-semibold tracking-wider uppercase"
-      style={
-        role === "admin"
-          ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }
-          : { background: "rgba(75,85,99,0.3)", color: "#6b7280", border: "1px solid rgba(75,85,99,0.4)" }
-      }
-    >
-      {role}
-    </span>
-  );
-}
-
-function Initials({ name, email }: { name: string | null; email: string }) {
-  const text = name ?? email;
-  const chars = text
-    .split(/[\s@._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-  return (
-    <div
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-gray-950"
-      style={{ background: "#f59e0b" }}
-    >
-      {chars}
-    </div>
-  );
-}
-
 export function UsersTable() {
   const router = useRouter();
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -57,7 +27,7 @@ export function UsersTable() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/users");
+      const res = await apiFetch("/api/admin/users");
       if (res.ok) setUsers(await res.json());
     } finally {
       setLoading(false);
@@ -175,7 +145,7 @@ export function UsersTable() {
                 className="grid w-full grid-cols-[auto_1fr_auto_auto_auto_32px] gap-4 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.03] border-b last:border-b-0 items-center"
                 style={{ borderColor: "rgba(255,255,255,0.04)" }}
               >
-                <Initials name={user.name} email={user.email} />
+                <UserInitials name={user.name} email={user.email} size="sm" />
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium text-gray-200">
                     {user.name ?? <span className="text-gray-500 italic">No name</span>}

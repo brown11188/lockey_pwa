@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Settings as SettingsIcon, Image as ImageIcon } from "lucide-react";
+import { Settings as SettingsIcon, Image as ImageIcon, SearchX } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useLanguage } from "@/lib/language-context";
 import { formatDateGroup, getDateOnly } from "@/lib/format";
@@ -15,6 +15,8 @@ import { FabButton } from "@/components/fab-button";
 import { QuickAddModal } from "@/components/quick-add-modal";
 import { StreakBadge } from "@/components/streak-badge";
 import { MonthlyWrapped, type WrappedData } from "@/components/monthly-wrapped";
+import { SearchFilterBar } from "@/components/search-filter-bar";
+import { FilterPanel, type FilterState, EMPTY_FILTERS, countActiveFilters } from "@/components/filter-panel";
 import type { Entry } from "@/db/schema";
 
 type Filter = "week" | "month" | "all";
@@ -28,7 +30,6 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
   const { t } = useLanguage();
   const [entries, setEntries] = useState<Entry[]>(initialEntries ?? []);
   const [filter, setFilter] = useState<Filter>("all");
-  // If server prefetched entries, start without loading spinner
   const [loading, setLoading] = useState(!initialEntries);
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Entry | null>(null);
@@ -39,31 +40,53 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
   const [currentStreak, setCurrentStreak] = useState(initialStreak ?? 0);
   const [wrappedData, setWrappedData] = useState<WrappedData | null>(null);
   const [showWrapped, setShowWrapped] = useState(false);
-  // Track whether we should skip the first "all" fetch (already have server data)
   const skipInitialFetch = useRef(!!initialEntries);
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const filterCount = countActiveFilters(filters);
+  const isSearchActive = searchQuery.trim() !== "" || filterCount > 0;
+
+  const buildQueryString = useCallback(
+    (f: Filter, q: string, flt: FilterState) => {
+      const params = new URLSearchParams();
+      params.set("filter", f);
+      if (q.trim()) params.set("q", q.trim());
+      if (flt.categories.length > 0) params.set("category", flt.categories.join(","));
+      if (flt.minAmount) params.set("minAmount", flt.minAmount);
+      if (flt.maxAmount) params.set("maxAmount", flt.maxAmount);
+      if (flt.dateFrom) params.set("dateFrom", flt.dateFrom);
+      if (flt.dateTo) params.set("dateTo", flt.dateTo);
+      return params.toString();
+    },
+    []
+  );
 
   const fetchEntries = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiFetch(`/api/entries?filter=${filter}`);
+      const qs = buildQueryString(filter, searchQuery, filters);
+      const response = await apiFetch(`/api/entries?${qs}`);
       setEntries((await response.json()) as Entry[]);
     } catch {
       console.error("Failed to fetch entries");
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, searchQuery, filters, buildQueryString]);
 
   useEffect(() => {
-    // Skip initial fetch for "all" filter when server already provided data (Fix #7)
-    if (skipInitialFetch.current) {
+    if (skipInitialFetch.current && !isSearchActive) {
       skipInitialFetch.current = false;
       return;
     }
+    skipInitialFetch.current = false;
     fetchEntries();
-  }, [fetchEntries]);
+  }, [fetchEntries, isSearchActive]);
 
-  // Fetch streak + wrapped in parallel on mount (Fix #5)
+  // Fetch streak + wrapped in parallel on mount
   useEffect(() => {
     Promise.all([
       apiFetch("/api/streak").then((res) => res.ok ? res.json() : null).catch(() => null),
@@ -100,7 +123,6 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
         existing.total += entry.amount;
         return groups;
       }
-
       groups.push({
         date,
         label: formatDateGroup(entry.createdAt, t.dateTime),
@@ -131,7 +153,6 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
   const handleQuickAddSaved = useCallback(() => {
     setQuickAddOpen(false);
     setQuickAddDate(undefined);
-    // Parallelize entries + streak refresh (Fix #5)
     Promise.all([
       fetchEntries(),
       apiFetch("/api/streak")
@@ -157,6 +178,21 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
     setDayDetailOpen(false);
   }, []);
 
+  const handleApplyFilters = useCallback((f: FilterState) => {
+    setFilters(f);
+  }, []);
+
+  // Render search results (no results state)
+  const renderNoResults = () => (
+    <div className="flex h-[40vh] flex-col items-center justify-center gap-3 px-8 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
+        <SearchX className="h-8 w-8 text-gray-600" />
+      </div>
+      <p className="text-lg font-medium text-gray-400">{t.search.noResults}</p>
+      <p className="text-sm text-gray-600">{t.search.noResultsHint}</p>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-950 pb-24">
       <div className="sticky top-0 z-20 border-b border-white/5 bg-gray-950/95 backdrop-blur-lg safe-top">
@@ -169,6 +205,18 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
             <SettingsIcon className="h-4 w-4" />
           </Link>
         </div>
+
+        {/* Search bar */}
+        <div className="px-4 pb-3">
+          <SearchFilterBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            onToggleFilter={() => setFilterPanelOpen(true)}
+            filterCount={filterCount}
+          />
+        </div>
+
+        {/* Time filter tabs */}
         <div className="flex gap-2 px-4 pb-3">
           {(["week", "month", "all"] as Filter[]).map((value) => (
             <button
@@ -182,6 +230,11 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
               {t.gallery[value]}
             </button>
           ))}
+          {isSearchActive && (
+            <span className="flex items-center rounded-full bg-amber-500/10 px-3 text-xs font-medium text-amber-400">
+              {entries.length} {t.search.results}
+            </span>
+          )}
         </div>
       </div>
 
@@ -189,17 +242,23 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
         <div className="flex h-64 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
         </div>
+      ) : isSearchActive && entries.length === 0 ? (
+        renderNoResults()
       ) : filter === "all" ? (
         <div className="space-y-6 px-4 pt-4">
-          <HistoryCalendarPanel
-            selectedDate={selectedDate}
-            markedDates={markedDates}
-            allEntries={entries}
-            onSelectDate={handleDateSelect}
-          />
+          {!isSearchActive && (
+            <HistoryCalendarPanel
+              selectedDate={selectedDate}
+              markedDates={markedDates}
+              allEntries={entries}
+              onSelectDate={handleDateSelect}
+            />
+          )}
 
           <section>
-            <h2 className="mb-3 text-sm font-semibold text-gray-400">{t.gallery.title}</h2>
+            {!isSearchActive && (
+              <h2 className="mb-3 text-sm font-semibold text-gray-400">{t.gallery.title}</h2>
+            )}
             {groupedEntries.length > 0 ? (
               <GalleryDayGroups
                 groups={groupedEntries}
@@ -257,6 +316,14 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
         selectedEntries={selectedEntries}
         onSelectEntry={handleDayDetailSelectEntry}
         onDeleteEntry={setDeleteConfirm}
+      />
+
+      {/* Filter Panel */}
+      <FilterPanel
+        open={filterPanelOpen}
+        filters={filters}
+        onApply={handleApplyFilters}
+        onClose={() => setFilterPanelOpen(false)}
       />
 
       {/* Monthly Wrapped */}

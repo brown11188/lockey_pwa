@@ -295,6 +295,35 @@ export const wrappedDismissals = pgTable("wrapped_dismissals", {
     .defaultNow(),
 });
 
+// ─── Saving Goals ───────────────────────────────────────────────────────────
+
+export const savingGoals = pgTable(
+  "saving_goals",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    emoji: text("emoji").notNull().default("🎯"),
+    targetAmount: real("target_amount").notNull(),
+    currentAmount: real("current_amount").notNull().default(0),
+    currency: text("currency").notNull().default("VND"),
+    deadline: text("deadline"),
+    isCompleted: boolean("is_completed").notNull().default(false),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => ({
+    userIdIdx: index("idx_saving_goals_user_id").on(t.userId),
+  })
+);
+
 // ─── Type Exports ───────────────────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;
@@ -314,3 +343,5 @@ export type Family = typeof families.$inferSelect;
 export type NewFamily = typeof families.$inferInsert;
 export type FamilyMember = typeof familyMembers.$inferSelect;
 export type NewFamilyMember = typeof familyMembers.$inferInsert;
+export type SavingGoal = typeof savingGoals.$inferSelect;
+export type NewSavingGoal = typeof savingGoals.$inferInsert;

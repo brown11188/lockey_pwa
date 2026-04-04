@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
+import { RoleBadge } from "@/components/admin/role-badge";
+import { UserInitials } from "@/components/admin/user-initials";
 import {
   ArrowLeft,
   Loader2,
@@ -44,40 +47,6 @@ type Subscription = {
   isActive: boolean;
 };
 
-function Initials({ name, email }: { name: string | null; email: string }) {
-  const text = name ?? email;
-  const chars = text
-    .split(/[\s@._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-  return (
-    <div
-      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-gray-950"
-      style={{ background: "#f59e0b" }}
-    >
-      {chars}
-    </div>
-  );
-}
-
-function RoleBadge({ role }: { role: string }) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-mono font-semibold tracking-wider uppercase"
-      style={
-        role === "admin"
-          ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }
-          : { background: "rgba(75,85,99,0.3)", color: "#6b7280", border: "1px solid rgba(75,85,99,0.4)" }
-      }
-    >
-      {role === "admin" ? <ShieldCheck size={9} /> : <ShieldOff size={9} />}
-      {role}
-    </span>
-  );
-}
-
 function formatAmount(amount: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -103,9 +72,9 @@ export function UserDetail({ userId }: { userId: string }) {
     setLoading(true);
     try {
       const [userRes, entriesRes, subsRes] = await Promise.all([
-        fetch(`/api/admin/users/${userId}`),
-        fetch(`/api/admin/users/${userId}/entries`),
-        fetch(`/api/admin/users/${userId}/subscriptions`),
+        apiFetch(`/api/admin/users/${userId}`),
+        apiFetch(`/api/admin/users/${userId}/entries`),
+        apiFetch(`/api/admin/users/${userId}/subscriptions`),
       ]);
       if (userRes.ok) setUser(await userRes.json());
       if (entriesRes.ok) setEntries(await entriesRes.json());
@@ -122,7 +91,7 @@ export function UserDetail({ userId }: { userId: string }) {
     const newRole = user.role === "admin" ? "user" : "admin";
     setUpdatingRole(true);
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      const res = await apiFetch(`/api/admin/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: newRole }),
@@ -136,7 +105,7 @@ export function UserDetail({ userId }: { userId: string }) {
   async function deleteUser() {
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/admin/users/${userId}`, { method: "DELETE" });
       if (res.ok) router.push("/admin/users");
     } finally {
       setDeleting(false);
@@ -179,7 +148,7 @@ export function UserDetail({ userId }: { userId: string }) {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Initials name={user.name} email={user.email} />
+            <UserInitials name={user.name} email={user.email} size="lg" />
             <div>
               <h1
                 className="text-xl font-bold tracking-tight text-gray-100"
@@ -192,7 +161,7 @@ export function UserDetail({ userId }: { userId: string }) {
                 <span className="font-mono">{user.email}</span>
               </div>
               <div className="mt-2 flex items-center gap-2">
-                <RoleBadge role={user.role} />
+                <RoleBadge role={user.role} showIcon />
                 <span className="flex items-center gap-1 text-[11px] text-gray-600 font-mono">
                   <Calendar size={10} />
                   {new Date(user.createdAt).toLocaleDateString("en-US", {

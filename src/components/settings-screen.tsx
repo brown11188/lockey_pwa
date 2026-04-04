@@ -8,6 +8,7 @@ import { apiFetch } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/http";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   ArrowLeft as ArrowLeftIcon,
   Trash2 as Trash2Icon,
@@ -17,6 +18,7 @@ import {
   LogOut as LogOutIcon,
   User as UserIcon,
   Trophy as TrophyIcon,
+  Download as DownloadIcon,
 } from "lucide-react";
 import { AchievementsSection } from "@/components/achievements-section";
 
@@ -154,9 +156,40 @@ export function SettingsScreen() {
           </div>
         </div>
 
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* Achievements */}
         <div className="mt-4">
           <AchievementsSection />
+        </div>
+
+        {/* Export Data */}
+        <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
+              <DownloadIcon className="h-5 w-5 text-amber-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium text-white">{t.exportData.title}</h3>
+              <p className="text-sm text-gray-500">{t.exportData.csvDesc}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+              const a = document.createElement("a");
+              a.href = `${basePath}/api/entries/export`;
+              a.download = "";
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+            }}
+            className="mt-4 w-full rounded-xl border border-amber-500/20 py-3 text-center text-sm font-medium text-amber-400 transition-all hover:bg-amber-500/10"
+          >
+            {t.exportData.csv}
+          </button>
         </div>
 
         {/* Clear Data */}

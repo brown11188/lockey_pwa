@@ -23,6 +23,7 @@ export interface Translations {
     gallery: string;
     stats: string;
     subscriptions: string;
+    family: string;
   };
 
   // Categories
@@ -106,6 +107,25 @@ export interface Translations {
     deleteConfirmDesc: string;
     stackTapHint: string;
     stackCollapse: string;
+  };
+
+  // Search & Filter
+  search: {
+    placeholder: string;
+    filterTitle: string;
+    categories: string;
+    amountRange: string;
+    dateRange: string;
+    minAmount: string;
+    maxAmount: string;
+    from: string;
+    to: string;
+    apply: string;
+    clear: string;
+    activeFilters: string;
+    noResults: string;
+    noResultsHint: string;
+    results: string;
   };
 
   // Stats screen
@@ -210,6 +230,11 @@ export interface Translations {
     clearFailed: string;
     about: string;
     aboutDesc: string;
+    theme: string;
+    themeDesc: string;
+    themeDark: string;
+    themeLight: string;
+    themeSystem: string;
   };
 
   // Onboarding
@@ -315,6 +340,57 @@ export interface Translations {
       expert: string;
       legend: string;
     };
+  };
+
+  // Saving Goals
+  goals: {
+    title: string;
+    newGoal: string;
+    editGoal: string;
+    name: string;
+    namePlaceholder: string;
+    emoji: string;
+    target: string;
+    current: string;
+    deadline: string;
+    save: string;
+    saved: string;
+    completed: string;
+    addFunds: string;
+    addFundsPlaceholder: string;
+    progress: string;
+    remaining: string;
+    daysLeft: string;
+    overdue: string;
+    noGoals: string;
+    noGoalsHint: string;
+    deleteTitle: string;
+    deleteDesc: string;
+    congrats: string;
+    congratsDesc: string;
+  };
+
+  // Export
+  exportData: {
+    title: string;
+    csv: string;
+    csvDesc: string;
+    dateRange: string;
+    allTime: string;
+    exporting: string;
+    success: string;
+  };
+
+  // Offline / PWA
+  offline: {
+    banner: string;
+    queued: string;
+    syncing: string;
+    syncNow: string;
+    syncComplete: string;
+    syncFailed: string;
+    pendingSync: string;
+    savedOffline: string;
   };
 
   // Auth

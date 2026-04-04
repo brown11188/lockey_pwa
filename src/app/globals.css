@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #030712;
-  --color-foreground: #f9fafb;
+  --color-background: #f9fafb;
+  --color-foreground: #030712;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -12,8 +12,14 @@
 }
 
 html {
-  background-color: #030712;
+  background-color: var(--color-background);
+  color-scheme: light;
+}
+
+html.dark {
   color-scheme: dark;
+  --color-background: #030712;
+  --color-foreground: #f9fafb;
 }
 
 body {
@@ -75,4 +81,23 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   0%, 100% { transform: translateX(0); }
   10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
   20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+/* Slide-up animation for filter panel */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }

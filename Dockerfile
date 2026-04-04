@@ -20,7 +20,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_BASE_PATH=/apps/p8rnlryi0yd1sa6uufs1j1ur
-ENV AUTH_SECRET=lockey-super-secret-auth-key-2026-p8rnlryi0yd1sa6uufs1j1ur
+ENV AUTH_SECRET=build_placeholder
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public

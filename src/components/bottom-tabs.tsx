@@ -21,7 +21,7 @@ export function BottomTabs() {
     { href: "/camera", label: t.tabs.capture, icon: CameraIcon },
     { href: "/stats", label: t.tabs.stats, icon: BarChart3Icon },
     { href: "/subscriptions", label: t.tabs.subscriptions, icon: CreditCardIcon },
-    { href: "/family", label: "Family", icon: UsersIcon },
+    { href: "/family", label: t.tabs.family, icon: UsersIcon },
   ];
 
   return (

@@ -10,6 +10,7 @@ import { getCategoryInfo } from "@/lib/constants";
 import { SummaryCard } from "@/components/summary-card";
 import { CategoryBadge } from "@/components/category-badge";
 import { BudgetSection } from "@/components/budget-section";
+import { GoalsScreen } from "@/components/goals-screen";
 import { MonthlyWrapped, type WrappedData } from "@/components/monthly-wrapped";
 import Link from "next/link";
 import { Wallet as WalletIcon, Calendar as CalendarIcon, Trophy as TrophyIcon, Settings as SettingsIcon } from "lucide-react";
@@ -149,6 +150,9 @@ export function StatsScreen({ initialStats }: StatsScreenProps) {
 
           {/* Budget Section */}
           <BudgetSection />
+
+          {/* Saving Goals */}
+          <GoalsScreen />
 
           {/* View Recap Button */}
           {wrappedData && wrappedData.hasData && (

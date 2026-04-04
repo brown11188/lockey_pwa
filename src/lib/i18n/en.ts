@@ -21,6 +21,7 @@ export const en: Translations = {
     gallery: "Gallery",
     stats: "Stats",
     subscriptions: "Subs",
+    family: "Family",
   },
 
   categories: {
@@ -99,6 +100,24 @@ export const en: Translations = {
     deleteConfirmDesc: "This will permanently delete this spending entry and its photo.",
     stackTapHint: "photos · tap to expand",
     stackCollapse: "Collapse",
+  },
+
+  search: {
+    placeholder: "Search notes...",
+    filterTitle: "Filters",
+    categories: "Categories",
+    amountRange: "Amount range",
+    dateRange: "Date range",
+    minAmount: "Min",
+    maxAmount: "Max",
+    from: "From",
+    to: "To",
+    apply: "Apply",
+    clear: "Clear all",
+    activeFilters: "filters",
+    noResults: "No results found",
+    noResultsHint: "Try adjusting your search or filters",
+    results: "results",
   },
 
   stats: {
@@ -280,6 +299,11 @@ export const en: Translations = {
     clearFailed: "Failed to clear data. Please try again.",
     about: "Lockey",
     aboutDesc: "Photo-based expense tracker. All data stored locally.",
+    theme: "Theme",
+    themeDesc: "Switch between dark and light mode",
+    themeDark: "Dark",
+    themeLight: "Light",
+    themeSystem: "System",
   },
 
   onboarding: {
@@ -301,6 +325,54 @@ export const en: Translations = {
       "July", "August", "September", "October", "November", "December",
     ],
     daysOfWeek: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+  },
+
+  goals: {
+    title: "Saving Goals",
+    newGoal: "New Goal",
+    editGoal: "Edit Goal",
+    name: "Goal name",
+    namePlaceholder: "e.g. New iPhone, Vacation...",
+    emoji: "Icon",
+    target: "Target amount",
+    current: "Current saved",
+    deadline: "Deadline",
+    save: "Save Goal",
+    saved: "Goal saved!",
+    completed: "Completed!",
+    addFunds: "Add savings",
+    addFundsPlaceholder: "Amount to add",
+    progress: "progress",
+    remaining: "remaining",
+    daysLeft: "days left",
+    overdue: "Overdue",
+    noGoals: "No saving goals yet",
+    noGoalsHint: "Set a goal to start tracking your savings",
+    deleteTitle: "Delete goal?",
+    deleteDesc: "This action cannot be undone.",
+    congrats: "\ud83c\udf89 Goal reached!",
+    congratsDesc: "Congratulations! You've hit your target!",
+  },
+
+  exportData: {
+    title: "Export Data",
+    csv: "Export CSV",
+    csvDesc: "Download all expenses as CSV file",
+    dateRange: "Date range",
+    allTime: "All time",
+    exporting: "Exporting...",
+    success: "Download started!",
+  },
+
+  offline: {
+    banner: "You are offline",
+    queued: "queued",
+    syncing: "Syncing your data...",
+    syncNow: "Sync now",
+    syncComplete: "All data synced!",
+    syncFailed: "Some items failed to sync",
+    pendingSync: "{count} items pending sync",
+    savedOffline: "Saved offline. Will sync when back online.",
   },
 
   auth: {

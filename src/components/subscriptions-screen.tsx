@@ -60,6 +60,19 @@ export function SubscriptionsScreen({ initialSubs }: { initialSubs?: Subscriptio
     fetchSubs();
   }, [fetchSubs]);
 
+  // Auto-process due subscription renewals on mount
+  useEffect(() => {
+    apiFetch("/api/subscriptions/process-renewals", { method: "POST" })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.processed > 0) {
+          fetchSubs(); // Refresh to show updated dates
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const upcomingSubs = useMemo(
     () =>
       subs

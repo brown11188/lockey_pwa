@@ -6,6 +6,10 @@ import { LanguageProvider } from "@/lib/language-context";
 import { HtmlLangUpdater } from "@/components/html-lang-updater";
 import AuthProvider from "@/components/auth-provider";
 import { AuthLayout } from "@/components/auth-layout";
+import { ThemeProvider } from "@/components/theme-provider";
+import { PWAProvider } from "@/components/pwa-provider";
+
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,12 +19,13 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false, // Prevent unused font preload warning — loaded on demand via CSS
 });
 
 export const metadata: Metadata = {
   title: "Lockey - Photo Expense Tracker",
   description: "Snap your spending, track your money. A visual personal finance tracker.",
-  manifest: "/manifest.json",
+  manifest: `${BASE_PATH}/manifest.json`,
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -48,7 +53,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full bg-gray-950 text-white">
+      <body className="min-h-full bg-gray-950 text-white dark:bg-gray-950 dark:text-white">
+        <ThemeProvider>
+        <PWAProvider>
         <AuthProvider>
           <CurrencyProvider>
             <LanguageProvider>
@@ -57,6 +64,8 @@ export default function RootLayout({
             </LanguageProvider>
           </CurrencyProvider>
         </AuthProvider>
+        </PWAProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

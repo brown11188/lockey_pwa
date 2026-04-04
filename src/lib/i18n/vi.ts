@@ -21,6 +21,7 @@ export const vi: Translations = {
     gallery: "Bộ sưu tập",
     stats: "Thống kê",
     subscriptions: "Đăng ký",
+    family: "Gia đình",
   },
 
   categories: {
@@ -99,6 +100,24 @@ export const vi: Translations = {
     deleteConfirmDesc: "Khoản chi tiêu này và ảnh sẽ bị xoá vĩnh viễn.",
     stackTapHint: "Ảnh · chạm để xem",
     stackCollapse: "Thu gọn",
+  },
+
+  search: {
+    placeholder: "Tìm ghi chú...",
+    filterTitle: "Bộ lọc",
+    categories: "Danh mục",
+    amountRange: "Khoảng tiền",
+    dateRange: "Khoảng ngày",
+    minAmount: "Tối thiểu",
+    maxAmount: "Tối đa",
+    from: "Từ",
+    to: "Đến",
+    apply: "Áp dụng",
+    clear: "Xoá tất cả",
+    activeFilters: "bộ lọc",
+    noResults: "Không tìm thấy",
+    noResultsHint: "Thử thay đổi từ khoá hoặc bộ lọc",
+    results: "kết quả",
   },
 
   stats: {
@@ -280,6 +299,11 @@ export const vi: Translations = {
     clearFailed: "Xoá dữ liệu thất bại. Vui lòng thử lại.",
     about: "Lockey",
     aboutDesc: "Ứng dụng theo dõi chi tiêu bằng ảnh. Dữ liệu được lưu trữ cục bộ.",
+    theme: "Giao diện",
+    themeDesc: "Chuyển đổi giữa chế độ tối và sáng",
+    themeDark: "Tối",
+    themeLight: "Sáng",
+    themeSystem: "Hệ thống",
   },
 
   onboarding: {
@@ -301,6 +325,54 @@ export const vi: Translations = {
       "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12",
     ],
     daysOfWeek: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"],
+  },
+
+  goals: {
+    title: "Mục tiêu tiết kiệm",
+    newGoal: "Mục tiêu mới",
+    editGoal: "Sửa mục tiêu",
+    name: "Tên mục tiêu",
+    namePlaceholder: "VD: iPhone mới, Du lịch...",
+    emoji: "Biểu tượng",
+    target: "Số tiền mục tiêu",
+    current: "\u0110ã tiết kiệm",
+    deadline: "Hạn chót",
+    save: "Lưu mục tiêu",
+    saved: "\u0110ã lưu!",
+    completed: "Hoàn thành!",
+    addFunds: "Thêm tiền",
+    addFundsPlaceholder: "Số tiền thêm",
+    progress: "tiến độ",
+    remaining: "còn lại",
+    daysLeft: "ngày còn lại",
+    overdue: "Quá hạn",
+    noGoals: "Chưa có mục tiêu",
+    noGoalsHint: "\u0110ặt mục tiêu để bắt đầu theo dõi",
+    deleteTitle: "Xoá mục tiêu?",
+    deleteDesc: "Hành động này không thể hoàn tác.",
+    congrats: "\ud83c\udf89 \u0110ạt mục tiêu!",
+    congratsDesc: "Chúc mừng! Bạn đã đạt được mục tiêu!",
+  },
+
+  exportData: {
+    title: "Xuất dữ liệu",
+    csv: "Xuất CSV",
+    csvDesc: "Tải xuống chi tiêu dưới dạng CSV",
+    dateRange: "Khoảng thời gian",
+    allTime: "Tất cả",
+    exporting: "\u0110ang xuất...",
+    success: "\u0110ã bắt đầu tải!",
+  },
+
+  offline: {
+    banner: "Bạn đang offline",
+    queued: "đang chờ",
+    syncing: "Đang đồng bộ dữ liệu...",
+    syncNow: "Đồng bộ ngay",
+    syncComplete: "Đã đồng bộ xong!",
+    syncFailed: "Một số mục chưa đồng bộ được",
+    pendingSync: "{count} mục đang chờ đồng bộ",
+    savedOffline: "Đã lưu offline. Sẽ đồng bộ khi có mạng.",
   },
 
   auth: {
