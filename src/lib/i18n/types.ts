@@ -104,6 +104,8 @@ export interface Translations {
     deleteEntry: string;
     deleteConfirmTitle: string;
     deleteConfirmDesc: string;
+    stackTapHint: string;
+    stackCollapse: string;
   };
 
   // Stats screen
