@@ -284,7 +284,7 @@ export function MonthlyWrapped({ data, onDismiss }: MonthlyWrappedProps) {
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[60] flex flex-col transition-all duration-500",
+        "fixed inset-0 z-[60] flex flex-col bg-gray-950 transition-all duration-500",
         entering ? "opacity-100" : "opacity-0"
       )}
       onTouchStart={handleTouchStart}
@@ -297,7 +297,10 @@ export function MonthlyWrapped({ data, onDismiss }: MonthlyWrappedProps) {
       )} />
 
       {/* Close button */}
-      <div className="relative z-10 flex items-center justify-between p-4">
+      <div
+        className="relative z-10 flex items-center justify-between px-4 pb-4"
+        style={{ paddingTop: "calc(1rem + env(safe-area-inset-top, 0px))" }}
+      >
         <span className="text-xs text-gray-500">
           {t.wrapped.slide.replace("{n}", String(currentSlide + 1)).replace("{total}", String(TOTAL_SLIDES))}
         </span>
