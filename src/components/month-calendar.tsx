@@ -126,7 +126,7 @@ export function MonthCalendar({ value, onChange, markedDates, dayMeta }: MonthCa
         {Array.from({ length: rows * 7 }, (_, index) => {
           const day = index - firstDay + 1;
           if (day < 1 || day > daysInMonth) {
-            return <div key={index} className="h-16" />;
+            return <div key={index} className="aspect-square w-full" />;
           }
 
           const dateKey = toDateKey(viewYear, viewMonth, day);
@@ -144,7 +144,7 @@ export function MonthCalendar({ value, onChange, markedDates, dayMeta }: MonthCa
               key={dateKey}
               type="button"
               onClick={() => selectDate(dateKey)}
-              className={`relative flex h-16 w-full flex-col items-center justify-center overflow-hidden rounded-xl border text-sm font-medium transition-all ${
+              className={`relative flex aspect-square w-full flex-col items-center justify-center overflow-hidden rounded-xl border text-sm font-medium transition-all ${
                 hasPhotos
                   ? isSelected
                     ? "border-amber-400"
