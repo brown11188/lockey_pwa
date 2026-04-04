@@ -7,13 +7,7 @@ import { HtmlLangUpdater } from "@/components/html-lang-updater";
 import AuthProvider from "@/components/auth-provider";
 import { AuthLayout } from "@/components/auth-layout";
 import { ThemeProvider } from "@/components/theme-provider";
-import dynamic from "next/dynamic";
-
-// Lazy-load PWA provider — service worker + offline banner are not critical for first paint
-const PWAProvider = dynamic(
-  () => import("@/components/pwa-provider").then((m) => ({ default: m.PWAProvider })),
-  { ssr: false }
-);
+import { PWAProviderLazy } from "@/components/pwa-provider-lazy";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -61,7 +55,7 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-gray-950 text-white dark:bg-gray-950 dark:text-white">
         <ThemeProvider>
-        <PWAProvider>
+        <PWAProviderLazy>
         <AuthProvider>
           <CurrencyProvider>
             <LanguageProvider>
@@ -70,7 +64,7 @@ export default function RootLayout({
             </LanguageProvider>
           </CurrencyProvider>
         </AuthProvider>
-        </PWAProvider>
+        </PWAProviderLazy>
         </ThemeProvider>
       </body>
     </html>
