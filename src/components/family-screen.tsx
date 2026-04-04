@@ -132,8 +132,15 @@ export function FamilyScreen() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
+      <div className="min-h-screen bg-gray-950 pb-24">
+        <div className="sticky top-0 z-20 border-b border-white/5 bg-gray-950/95 backdrop-blur-lg safe-top">
+          <div className="px-4 py-3">
+            <h1 className="text-xl font-bold text-white">Family</h1>
+          </div>
+        </div>
+        <div className="flex h-64 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
+        </div>
       </div>
     );
   }
