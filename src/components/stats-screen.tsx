@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { apiFetch } from "@/lib/api";
 import { getEntryPhotoUrl } from "@/lib/entry-photo";
 import { useCurrency } from "@/lib/currency-context";
@@ -13,17 +13,7 @@ import { BudgetSection } from "@/components/budget-section";
 import { MonthlyWrapped, type WrappedData } from "@/components/monthly-wrapped";
 import Link from "next/link";
 import { Wallet as WalletIcon, Calendar as CalendarIcon, Trophy as TrophyIcon, Settings as SettingsIcon } from "lucide-react";
-import type { Entry } from "@/db/schema";
-
-interface StatsData {
-  weekTotal: number;
-  monthTotal: number;
-  topCategory: string | null;
-  topCategoryTotal: number;
-  dailySpending: { date: string; label: string; total: number }[];
-  categoryBreakdown: { category: string; total: number; count: number }[];
-  recentTransactions: Entry[];
-}
+import type { StatsData } from "@/lib/compute-stats";
 
 const CHART_COLORS = [
   "#f59e0b",
@@ -34,14 +24,20 @@ const CHART_COLORS = [
   "#6b7280",
 ];
 
-export function StatsScreen() {
+interface StatsScreenProps {
+  initialStats?: StatsData;
+}
+
+export function StatsScreen({ initialStats }: StatsScreenProps) {
   const { currency } = useCurrency();
   const { t } = useLanguage();
   const [view, setView] = useState<"week" | "month">("week");
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<StatsData | null>(initialStats ?? null);
+  const [loading, setLoading] = useState(!initialStats);
   const [wrappedData, setWrappedData] = useState<WrappedData | null>(null);
   const [showWrapped, setShowWrapped] = useState(false);
+  // Skip the first "week" fetch when server already provided data
+  const skipInitialFetch = useRef(!!initialStats);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -57,6 +53,10 @@ export function StatsScreen() {
   }, [view]);
 
   useEffect(() => {
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
+      return;
+    }
     fetchStats();
   }, [fetchStats]);
 

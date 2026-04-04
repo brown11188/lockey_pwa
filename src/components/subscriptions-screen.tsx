@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useCurrency } from "@/lib/currency-context";
@@ -28,16 +28,18 @@ function getDaysUntilRenewal(dateStr: string): number {
 }
 
 
-export function SubscriptionsScreen() {
+export function SubscriptionsScreen({ initialSubs }: { initialSubs?: Subscription[] }) {
   const { currency } = useCurrency();
   const { rates, isLive } = useExchangeRates();
   const { t } = useLanguage();
-  const [subs, setSubs] = useState<Subscription[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [subs, setSubs] = useState<Subscription[]>(initialSubs ?? []);
+  const [loading, setLoading] = useState(!initialSubs);
   const [formOpen, setFormOpen] = useState(false);
   const [editSub, setEditSub] = useState<Subscription | null>(null);
   const [deleteSub, setDeleteSub] = useState<Subscription | null>(null);
   const [toast, setToast] = useState({ visible: false, message: "", type: "success" as "success" | "error" });
+  // Skip the first client fetch when server already provided data
+  const skipInitialFetch = useRef(!!initialSubs);
 
   const fetchSubs = useCallback(async () => {
     try {
@@ -51,6 +53,10 @@ export function SubscriptionsScreen() {
   }, []);
 
   useEffect(() => {
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
+      return;
+    }
     fetchSubs();
   }, [fetchSubs]);
 
