@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useCurrency } from "@/lib/currency-context";
 import { useLanguage } from "@/lib/language-context";
 import { LOCALES, LOCALE_LABELS } from "@/lib/i18n";
@@ -20,7 +21,9 @@ import {
   Trophy as TrophyIcon,
   Download as DownloadIcon,
 } from "lucide-react";
-import { AchievementsSection } from "@/components/achievements-section";
+
+// Lazy-load heavy achievements section (badges, streak, level)
+const AchievementsSection = dynamic(() => import("@/components/achievements-section").then(m => ({ default: m.AchievementsSection })));
 
 export function SettingsScreen() {
   const { currency, setCurrency } = useCurrency();

@@ -41,8 +41,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const t = useMemo(() => getDictionary(locale), [locale]);
 
+  // Memoize context value to prevent re-renders when parent re-renders
+  const value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
+
   return (
-    <LanguageContext.Provider value={{ locale, setLocale, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

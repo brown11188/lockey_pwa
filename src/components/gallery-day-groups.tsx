@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { PhotoCard } from "@/components/photo-card";
 import { PhotoGroupStack } from "@/components/photo-group-stack";
 import { formatCurrency } from "@/lib/format";
@@ -134,7 +134,7 @@ function PhotoStackGroup({
   );
 }
 
-export function GalleryDayGroups({
+export const GalleryDayGroups = memo(function GalleryDayGroups({
   groups,
   stickyHeader,
   onSelectEntry,
@@ -153,4 +153,5 @@ export function GalleryDayGroups({
       ))}
     </div>
   );
-}
+});
+GalleryDayGroups.displayName = "GalleryDayGroups";

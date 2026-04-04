@@ -7,7 +7,13 @@ import { HtmlLangUpdater } from "@/components/html-lang-updater";
 import AuthProvider from "@/components/auth-provider";
 import { AuthLayout } from "@/components/auth-layout";
 import { ThemeProvider } from "@/components/theme-provider";
-import { PWAProvider } from "@/components/pwa-provider";
+import dynamic from "next/dynamic";
+
+// Lazy-load PWA provider — service worker + offline banner are not critical for first paint
+const PWAProvider = dynamic(
+  () => import("@/components/pwa-provider").then((m) => ({ default: m.PWAProvider })),
+  { ssr: false }
+);
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 

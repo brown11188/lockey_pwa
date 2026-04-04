@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { useLanguage } from "@/lib/language-context";
 import { formatCurrency } from "@/lib/format";
 import { getCategoryInfo } from "@/lib/constants";
@@ -16,7 +16,7 @@ interface SubscriptionCardProps {
   highlighted?: boolean;
 }
 
-export function SubscriptionCard({
+export const SubscriptionCard = memo(function SubscriptionCard({
   subscription,
   daysUntilRenewal,
   onEdit,
@@ -121,4 +121,5 @@ export function SubscriptionCard({
       </div>
     </div>
   );
-}
+});
+SubscriptionCard.displayName = "SubscriptionCard";

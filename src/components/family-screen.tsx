@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import {
   Users as UsersIcon,
   Copy,
@@ -13,11 +14,13 @@ import {
 import { apiFetch } from "@/lib/api";
 import { useSession } from "next-auth/react";
 import { formatCurrency } from "@/lib/format";
-import { FamilyCreateModal } from "@/components/family-create-modal";
-import { FamilyJoinModal } from "@/components/family-join-modal";
-import { FamilySettingsModal } from "@/components/family-settings-modal";
-import { FamilyMemberDetail } from "@/components/family-member-detail";
 import type { Family, FamilyMember } from "@/db/schema";
+
+// Lazy-load modal components
+const FamilyCreateModal = dynamic(() => import("@/components/family-create-modal").then(m => ({ default: m.FamilyCreateModal })), { ssr: false });
+const FamilyJoinModal = dynamic(() => import("@/components/family-join-modal").then(m => ({ default: m.FamilyJoinModal })), { ssr: false });
+const FamilySettingsModal = dynamic(() => import("@/components/family-settings-modal").then(m => ({ default: m.FamilySettingsModal })), { ssr: false });
+const FamilyMemberDetail = dynamic(() => import("@/components/family-member-detail").then(m => ({ default: m.FamilyMemberDetail })), { ssr: false });
 
 interface MemberWithUser extends FamilyMember {
   name: string | null;
@@ -194,8 +197,8 @@ export function FamilyScreen() {
           </div>
         </div>
 
-        <FamilyCreateModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={fetchFamily} />
-        <FamilyJoinModal open={joinOpen} onClose={() => setJoinOpen(false)} onJoined={fetchFamily} />
+        {createOpen && <FamilyCreateModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={fetchFamily} />}
+        {joinOpen && <FamilyJoinModal open={joinOpen} onClose={() => setJoinOpen(false)} onJoined={fetchFamily} />}
       </div>
     );
   }
@@ -358,7 +361,7 @@ export function FamilyScreen() {
         </div>
       </div>
 
-      {family && (
+      {family && settingsOpen && (
         <FamilySettingsModal
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}

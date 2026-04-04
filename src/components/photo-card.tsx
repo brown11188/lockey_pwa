@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { CategoryBadge } from "@/components/category-badge";
 import { formatCurrency, formatTime } from "@/lib/format";
 import { useCurrency } from "@/lib/currency-context";
@@ -7,7 +8,7 @@ import { getEntryPhotoUrl } from "@/lib/entry-photo";
 import { getCategoryInfo } from "@/lib/constants";
 import type { Entry } from "@/db/schema";
 
-export function PhotoCard({
+export const PhotoCard = memo(function PhotoCard({
   entry,
   onClick,
   onLongPress,
@@ -72,4 +73,5 @@ export function PhotoCard({
       </div>
     </button>
   );
-}
+});
+PhotoCard.displayName = "PhotoCard";

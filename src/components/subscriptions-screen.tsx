@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useCurrency } from "@/lib/currency-context";
 import { useLanguage } from "@/lib/language-context";
 import { SubscriptionCard } from "@/components/subscription-card";
-import { SubscriptionFormModal, type SubscriptionFormData } from "@/components/subscription-form-modal";
-import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Toast, triggerHaptic } from "@/components/toast";
 import {
   Settings as SettingsIcon,
@@ -15,9 +14,14 @@ import {
   CreditCard as CreditCardIcon,
   Calendar as CalendarIcon,
 } from "lucide-react";
-import { SubscriptionOverview } from "@/components/subscription-overview";
 import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import type { Subscription } from "@/db/schema";
+import type { SubscriptionFormData } from "@/components/subscription-form-modal";
+
+// Lazy-load heavy components
+const SubscriptionFormModal = dynamic(() => import("@/components/subscription-form-modal").then(m => ({ default: m.SubscriptionFormModal })), { ssr: false });
+const ConfirmDialog = dynamic(() => import("@/components/confirm-dialog").then(m => ({ default: m.ConfirmDialog })), { ssr: false });
+const SubscriptionOverview = dynamic(() => import("@/components/subscription-overview").then(m => ({ default: m.SubscriptionOverview })));
 
 function getDaysUntilRenewal(dateStr: string): number {
   const today = new Date();
@@ -253,24 +257,28 @@ export function SubscriptionsScreen({ initialSubs }: { initialSubs?: Subscriptio
       )}
 
       {/* Form modal */}
-      <SubscriptionFormModal
-        open={formOpen}
-        onClose={() => { setFormOpen(false); setEditSub(null); }}
-        onSave={handleSave}
-        initial={editSub}
-      />
+      {formOpen && (
+        <SubscriptionFormModal
+          open={formOpen}
+          onClose={() => { setFormOpen(false); setEditSub(null); }}
+          onSave={handleSave}
+          initial={editSub}
+        />
+      )}
 
       {/* Delete confirm */}
-      <ConfirmDialog
-        open={!!deleteSub}
-        title={t.subscriptions.deleteTitle}
-        description={t.subscriptions.deleteDesc}
-        confirmLabel={t.common.delete}
-        cancelLabel={t.common.cancel}
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteSub(null)}
-        destructive
-      />
+      {deleteSub && (
+        <ConfirmDialog
+          open={!!deleteSub}
+          title={t.subscriptions.deleteTitle}
+          description={t.subscriptions.deleteDesc}
+          confirmLabel={t.common.delete}
+          cancelLabel={t.common.cancel}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteSub(null)}
+          destructive
+        />
+      )}
 
       {/* Toast */}
       <Toast

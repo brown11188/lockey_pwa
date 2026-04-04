@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { Zap as ZapIcon, CalendarDays as CalendarDaysIcon, ReceiptText as ReceiptTextIcon, Wallet as WalletIcon } from "lucide-react";
 import { MonthCalendar, type CalendarDayMeta } from "@/components/month-calendar";
 import { formatCurrency, getMonthKey } from "@/lib/format";
@@ -14,7 +15,7 @@ interface HistoryCalendarPanelProps {
   onSelectDate: (value: string) => void;
 }
 
-export function HistoryCalendarPanel({
+export const HistoryCalendarPanel = memo(function HistoryCalendarPanel({
   selectedDate,
   markedDates,
   allEntries,
@@ -25,23 +26,27 @@ export function HistoryCalendarPanel({
 
   const selectedMonthKey = getMonthKey(`${selectedDate}T12:00:00`);
 
-  const monthEntries = allEntries.filter((entry) => getMonthKey(entry.createdAt) === selectedMonthKey);
-  const dayMeta = monthEntries.reduce<Record<string, CalendarDayMeta>>((acc, entry) => {
+  const monthEntries = useMemo(
+    () => allEntries.filter((entry) => getMonthKey(entry.createdAt) === selectedMonthKey),
+    [allEntries, selectedMonthKey]
+  );
+
+  const dayMeta = useMemo(() => monthEntries.reduce<Record<string, CalendarDayMeta>>((acc, entry) => {
     const dateKey = entry.createdAt.slice(0, 10);
     const current = acc[dateKey] ?? { amount: 0, count: 0, photos: [] };
     const photos = current.photos ?? [];
     acc[dateKey] = {
       amount: current.amount + entry.amount,
       count: current.count + 1,
-      // Collect up to 3 photo URIs per day for the thumbnail stack
       photos: entry.photoUri && photos.length < 3 ? [...photos, entry.photoUri] : photos,
     };
     return acc;
-  }, {});
+  }, {}), [monthEntries]);
 
   const activeDays = Object.keys(dayMeta).length;
   const monthTotal = monthEntries.reduce((sum, entry) => sum + entry.amount, 0);
   const peakDay = Object.entries(dayMeta).sort((a, b) => b[1].amount - a[1].amount)[0];
+
   return (
     <div className="space-y-6">
       <section>
@@ -62,7 +67,7 @@ export function HistoryCalendarPanel({
             <span>{t.gallery.highSpendDays}</span>
           </div>
           <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
-            1–2 = normal, 3+ = hot
+            1\u20132 = normal, 3+ = hot
           </div>
         </div>
       </section>
@@ -94,10 +99,10 @@ export function HistoryCalendarPanel({
             <ZapIcon className="h-4 w-4" />
             <span className="text-xs font-medium">{t.gallery.peakDay}</span>
           </div>
-          <p className="mt-3 text-sm font-bold text-white">{peakDay ? peakDay[0] : "—"}</p>
+          <p className="mt-3 text-sm font-bold text-white">{peakDay ? peakDay[0] : "\u2014"}</p>
           <p className="mt-1 text-xs text-gray-500">{peakDay ? formatCurrency(peakDay[1].amount, currency) : ""}</p>
         </div>
       </section>
     </div>
   );
-}
+});

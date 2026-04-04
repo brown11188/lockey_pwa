@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useLanguage } from "@/lib/language-context";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
 
@@ -50,7 +50,7 @@ function getMonthFromIndex(monthIndex: number): { year: number; month: number } 
   return { year, month };
 }
 
-export function MonthCalendar({ value, onChange, markedDates, dayMeta }: MonthCalendarProps) {
+function MonthCalendarInner({ value, onChange, markedDates, dayMeta }: MonthCalendarProps) {
   const { t } = useLanguage();
   const selected = useMemo(() => parseDateKey(value), [value]);
   const [monthOffset, setMonthOffset] = useState(0);
@@ -247,3 +247,5 @@ export function MonthCalendar({ value, onChange, markedDates, dayMeta }: MonthCa
     </div>
   );
 }
+
+export const MonthCalendar = memo(MonthCalendarInner);

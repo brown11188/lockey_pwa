@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
 import { apiFetch } from "@/lib/api";
 import { getEntryPhotoUrl } from "@/lib/entry-photo";
 import { useCurrency } from "@/lib/currency-context";
@@ -9,12 +10,15 @@ import { formatCurrency, formatTime } from "@/lib/format";
 import { getCategoryInfo } from "@/lib/constants";
 import { SummaryCard } from "@/components/summary-card";
 import { CategoryBadge } from "@/components/category-badge";
-import { BudgetSection } from "@/components/budget-section";
-import { GoalsScreen } from "@/components/goals-screen";
-import { MonthlyWrapped, type WrappedData } from "@/components/monthly-wrapped";
 import Link from "next/link";
 import { Wallet as WalletIcon, Calendar as CalendarIcon, Trophy as TrophyIcon, Settings as SettingsIcon } from "lucide-react";
 import type { StatsData } from "@/lib/compute-stats";
+import type { WrappedData } from "@/components/monthly-wrapped";
+
+// Lazy-load heavy sub-sections
+const BudgetSection = dynamic(() => import("@/components/budget-section").then(m => ({ default: m.BudgetSection })));
+const GoalsScreen = dynamic(() => import("@/components/goals-screen").then(m => ({ default: m.GoalsScreen })));
+const MonthlyWrapped = dynamic(() => import("@/components/monthly-wrapped").then(m => ({ default: m.MonthlyWrapped })), { ssr: false });
 
 const CHART_COLORS = [
   "#f59e0b",

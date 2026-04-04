@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
     remotePatterns: [],
   },
   serverExternalPackages: [],
+  // Cache RSC responses on client to speed up back/forward navigation
+  // static: pages that don't change between navigations (5 min cache)
+  // dynamic: pages with user data (30 sec cache for quick back-nav)
+  experimental: {
+    staleTimes: {
+      dynamic: 30,
+      static: 300,
+    },
+    optimizePackageImports: ["lucide-react"],
+  },
   async rewrites() {
     return [
       {
@@ -19,9 +29,6 @@ const nextConfig: NextConfig = {
         destination: "/api/photos/:filename",
       },
     ];
-  },
-  experimental: {
-    optimizePackageImports: ["lucide-react"],
   },
 };
 

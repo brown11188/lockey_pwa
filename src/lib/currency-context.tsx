@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { apiFetch } from "@/lib/api";
 import { fetchSettings, invalidateSettingsCache } from "@/lib/settings-cache";
 
@@ -37,8 +37,11 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
   }, []);
 
+  // Memoize context value to prevent re-renders when parent re-renders
+  const value = useMemo(() => ({ currency, setCurrency }), [currency, setCurrency]);
+
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency }}>
+    <CurrencyContext.Provider value={value}>
       {children}
     </CurrencyContext.Provider>
   );

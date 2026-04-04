@@ -1,23 +1,28 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Settings as SettingsIcon, Image as ImageIcon, SearchX } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useLanguage } from "@/lib/language-context";
 import { formatDateGroup, getDateOnly } from "@/lib/format";
 import { GalleryDayGroups, type EntryGroup } from "@/components/gallery-day-groups";
-import { EntryDetailModal } from "@/components/entry-detail-modal";
-import { DeleteEntryDialog } from "@/components/delete-entry-dialog";
-import { HistoryCalendarPanel } from "@/components/history-calendar-panel";
-import { DayDetailModal } from "@/components/day-detail-modal";
-import { FabButton } from "@/components/fab-button";
-import { QuickAddModal } from "@/components/quick-add-modal";
 import { StreakBadge } from "@/components/streak-badge";
-import { MonthlyWrapped, type WrappedData } from "@/components/monthly-wrapped";
 import { SearchFilterBar } from "@/components/search-filter-bar";
-import { FilterPanel, type FilterState, EMPTY_FILTERS, countActiveFilters } from "@/components/filter-panel";
+import { type FilterState, EMPTY_FILTERS, countActiveFilters } from "@/components/filter-panel";
 import type { Entry } from "@/db/schema";
+import type { WrappedData } from "@/components/monthly-wrapped";
+
+// Lazy-load heavy modal/panel components — only loaded when opened
+const EntryDetailModal = dynamic(() => import("@/components/entry-detail-modal").then(m => ({ default: m.EntryDetailModal })), { ssr: false });
+const DeleteEntryDialog = dynamic(() => import("@/components/delete-entry-dialog").then(m => ({ default: m.DeleteEntryDialog })), { ssr: false });
+const HistoryCalendarPanel = dynamic(() => import("@/components/history-calendar-panel").then(m => ({ default: m.HistoryCalendarPanel })));
+const DayDetailModal = dynamic(() => import("@/components/day-detail-modal").then(m => ({ default: m.DayDetailModal })), { ssr: false });
+const FabButton = dynamic(() => import("@/components/fab-button").then(m => ({ default: m.FabButton })));
+const QuickAddModal = dynamic(() => import("@/components/quick-add-modal").then(m => ({ default: m.QuickAddModal })), { ssr: false });
+const MonthlyWrapped = dynamic(() => import("@/components/monthly-wrapped").then(m => ({ default: m.MonthlyWrapped })), { ssr: false });
+const FilterPanel = dynamic(() => import("@/components/filter-panel").then(m => ({ default: m.FilterPanel })), { ssr: false });
 
 type Filter = "week" | "month" | "all";
 
@@ -299,32 +304,38 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
       <FabButton onQuickAdd={() => setQuickAddOpen(true)} />
 
       {/* Quick-Add Modal */}
-      <QuickAddModal
-        open={quickAddOpen}
-        onClose={() => { setQuickAddOpen(false); setQuickAddDate(undefined); }}
-        onSaved={handleQuickAddSaved}
-        initialDate={quickAddDate}
-      />
+      {quickAddOpen && (
+        <QuickAddModal
+          open={quickAddOpen}
+          onClose={() => { setQuickAddOpen(false); setQuickAddDate(undefined); }}
+          onSaved={handleQuickAddSaved}
+          initialDate={quickAddDate}
+        />
+      )}
 
       {selectedEntry ? <EntryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} onDelete={setDeleteConfirm} /> : null}
       {deleteConfirm ? <DeleteEntryDialog entry={deleteConfirm} onCancel={() => setDeleteConfirm(null)} onConfirm={handleDelete} /> : null}
 
-      <DayDetailModal
-        open={dayDetailOpen}
-        onClose={() => setDayDetailOpen(false)}
-        selectedDate={selectedDate}
-        selectedEntries={selectedEntries}
-        onSelectEntry={handleDayDetailSelectEntry}
-        onDeleteEntry={setDeleteConfirm}
-      />
+      {dayDetailOpen && (
+        <DayDetailModal
+          open={dayDetailOpen}
+          onClose={() => setDayDetailOpen(false)}
+          selectedDate={selectedDate}
+          selectedEntries={selectedEntries}
+          onSelectEntry={handleDayDetailSelectEntry}
+          onDeleteEntry={setDeleteConfirm}
+        />
+      )}
 
       {/* Filter Panel */}
-      <FilterPanel
-        open={filterPanelOpen}
-        filters={filters}
-        onApply={handleApplyFilters}
-        onClose={() => setFilterPanelOpen(false)}
-      />
+      {filterPanelOpen && (
+        <FilterPanel
+          open={filterPanelOpen}
+          filters={filters}
+          onApply={handleApplyFilters}
+          onClose={() => setFilterPanelOpen(false)}
+        />
+      )}
 
       {/* Monthly Wrapped */}
       {showWrapped && wrappedData && wrappedData.hasData && (

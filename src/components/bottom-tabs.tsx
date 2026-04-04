@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -12,7 +13,7 @@ import {
   Users as UsersIcon,
 } from "lucide-react";
 
-export function BottomTabs() {
+export const BottomTabs = memo(function BottomTabs() {
   const pathname = usePathname();
   const { t } = useLanguage();
 
@@ -54,4 +55,5 @@ export function BottomTabs() {
       </div>
     </nav>
   );
-}
+});
+BottomTabs.displayName = "BottomTabs";

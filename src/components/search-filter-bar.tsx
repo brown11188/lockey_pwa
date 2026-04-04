@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 
@@ -11,7 +11,7 @@ interface SearchFilterBarProps {
   filterCount: number;
 }
 
-export function SearchFilterBar({
+export const SearchFilterBar = memo(function SearchFilterBar({
   value,
   onChange,
   onToggleFilter,
@@ -93,4 +93,4 @@ export function SearchFilterBar({
       </button>
     </div>
   );
-}
+});

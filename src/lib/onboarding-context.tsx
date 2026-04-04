@@ -16,7 +16,6 @@ const OnboardingContext = createContext<OnboardingContextType>({
 
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetchSettings()
@@ -24,8 +23,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         if (data.onboarding_done !== "true") {
           setShowOnboarding(true);
         }
-      })
-      .finally(() => setLoaded(true));
+      });
   }, []);
 
   const completeOnboarding = useCallback(() => {
@@ -37,8 +35,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       body: JSON.stringify({ key: "onboarding_done", value: "true" }),
     }).catch(() => {});
   }, []);
-
-  if (!loaded) return null;
 
   return (
     <OnboardingContext.Provider value={{ showOnboarding, completeOnboarding }}>

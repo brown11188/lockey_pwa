@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { getCategoryInfo } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/language-context";
@@ -20,7 +21,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: "bg-gray-500/20 text-gray-300 border-gray-500/30",
 };
 
-export function CategoryBadge({
+export const CategoryBadge = memo(function CategoryBadge({
   category,
   className,
 }: {
@@ -43,3 +44,5 @@ export function CategoryBadge({
     </span>
   );
 }
+);
+CategoryBadge.displayName = "CategoryBadge";

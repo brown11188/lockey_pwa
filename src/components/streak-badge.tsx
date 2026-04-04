@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useLanguage } from "@/lib/language-context";
 import { Flame as FlameIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,7 +10,7 @@ interface StreakBadgeProps {
   className?: string;
 }
 
-export function StreakBadge({ currentStreak, className }: StreakBadgeProps) {
+export const StreakBadge = memo(function StreakBadge({ currentStreak, className }: StreakBadgeProps) {
   const { t } = useLanguage();
 
   if (currentStreak <= 0) {
@@ -27,4 +28,4 @@ export function StreakBadge({ currentStreak, className }: StreakBadgeProps) {
       <span>{t.streak.days.replace("{count}", String(currentStreak))}</span>
     </div>
   );
-}
+});

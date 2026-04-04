@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { Camera as CameraIcon, Image as ImageIcon, SwitchCamera as SwitchCameraIcon } from "lucide-react";
-import { ExpenseBottomSheet } from "@/components/expense-bottom-sheet";
+
+// Lazy-load expense bottom sheet — only needed after photo capture
+const ExpenseBottomSheet = dynamic(() => import("@/components/expense-bottom-sheet").then(m => ({ default: m.ExpenseBottomSheet })), { ssr: false });
 
 export function CaptureScreen({ initialDateTime }: { initialDateTime?: string }) {
   const { t } = useLanguage();
