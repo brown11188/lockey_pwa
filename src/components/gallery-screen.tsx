@@ -199,7 +199,7 @@ export function GalleryScreen({ initialEntries, initialStreak }: GalleryScreenPr
   );
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-24">
+    <div className="min-h-screen bg-gray-950 pb-40">
       <div className="sticky top-0 z-20 border-b border-white/5 bg-gray-950/95 backdrop-blur-lg safe-top">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">

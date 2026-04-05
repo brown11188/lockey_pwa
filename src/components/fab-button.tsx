@@ -45,7 +45,7 @@ export function FabButton({ onQuickAdd }: FabButtonProps) {
   }, [onQuickAdd]);
 
   return (
-    <div ref={fabRef} className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-3">
+    <div ref={fabRef} className="fixed right-4 z-[60] flex flex-col items-end gap-3" style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px) + 16px)" }}>
       {/* Mini FABs */}
       <div
         className={cn(
