@@ -196,7 +196,7 @@ export function QuickAddModal({ open, onClose, onSaved, initialDate }: QuickAddM
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-3 safe-top">
           <h2 className="text-lg font-bold text-white">{t.quickAdd.title}</h2>
           <button
             type="button"
@@ -302,7 +302,7 @@ export function QuickAddModal({ open, onClose, onSaved, initialDate }: QuickAddM
           </div>
 
           {/* Save button */}
-          <div className="mt-6 pb-8">
+          <div className="mt-6 pb-8 safe-bottom">
             <button
               type="button"
               onClick={handleSave}

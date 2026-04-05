@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Target, Trash2, TrendingUp } from "lucide-react";
+import { Plus, Target, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useLanguage } from "@/lib/language-context";
 import { useCurrency } from "@/lib/currency-context";
@@ -49,9 +49,9 @@ export function GoalsScreen() {
   const sym = CURRENCY_SYMBOLS[currency] ?? currency;
 
   return (
-    <div className="min-h-screen bg-gray-950 px-4 pb-24 pt-4">
+    <div className="mt-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-amber-400" />
           <h2 className="text-lg font-bold text-white">{t.goals.title}</h2>
@@ -71,12 +71,9 @@ export function GoalsScreen() {
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
         </div>
       ) : goals.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
-            <TrendingUp className="h-8 w-8 text-gray-600" />
-          </div>
-          <p className="text-lg font-medium text-gray-400">{t.goals.noGoals}</p>
-          <p className="text-sm text-gray-600">{t.goals.noGoalsHint}</p>
+        <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-center">
+          <p className="text-sm text-gray-500">{t.goals.noGoals}</p>
+          <p className="mt-1 text-xs text-gray-600">{t.goals.noGoalsHint}</p>
         </div>
       ) : (
         <div className="space-y-6">
