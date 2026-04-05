@@ -13,7 +13,7 @@ import {
   Users as UsersIcon,
 } from "lucide-react";
 
-export const BottomTabs = memo(function BottomTabs() {
+export const BottomTabs = memo(function BottomTabs({ hidden }: { hidden?: boolean }) {
   const pathname = usePathname();
   const { t } = useLanguage();
 
@@ -26,7 +26,22 @@ export const BottomTabs = memo(function BottomTabs() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-gray-950/95 backdrop-blur-lg safe-bottom">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-gray-950/95 backdrop-blur-lg safe-bottom"
+      style={{
+        /* Inline position:fixed;bottom:0 guarantees the nav is pinned to the
+           bottom of the viewport even before Tailwind CSS loads, preventing
+           the bar from briefly appearing in the middle of the screen. */
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        /* Hidden during initial splash screen; fades in when ready */
+        opacity: hidden ? 0 : 1,
+        pointerEvents: hidden ? "none" : "auto",
+        transition: "opacity 0.15s ease",
+      }}
+    >
       <div className="mx-auto flex max-w-lg items-center justify-around py-2">
         {tabs.map((tab) => {
           const isActive = pathname.startsWith(tab.href);

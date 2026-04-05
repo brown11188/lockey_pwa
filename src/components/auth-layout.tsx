@@ -45,6 +45,9 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
   const wasAuthenticated = useRef(false);
   if (status === "authenticated") wasAuthenticated.current = true;
 
+  // Whether the initial session check is still in progress
+  const isInitialLoading = status === "loading" && !wasAuthenticated.current;
+
   useEffect(() => {
     if (!isAuthPage && status === "unauthenticated") {
       router.replace("/login");
@@ -61,17 +64,21 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Show splash ONLY on initial session load, not on route transitions
-  if (status === "loading" && !wasAuthenticated.current) {
-    return <Splash />;
-  }
-
-  // Authenticated (or was authenticated): render the full app shell
+  // App shell: always render BottomTabs in DOM so it never unmounts/remounts
+  // (prevents the nav bar from jumping to middle of screen on first load)
   return (
     <OnboardingProvider>
       <Onboarding />
-      <main className="mx-auto max-w-lg">{children}</main>
-      <BottomTabs />
+      {isInitialLoading ? (
+        <Splash />
+      ) : (
+        <main className="mx-auto max-w-lg">{children}</main>
+      )}
+      {/* BottomTabs always rendered — never conditional. Uses inline style
+          as insurance so position:fixed;bottom:0 is applied even before
+          Tailwind CSS is parsed, preventing the nav from briefly appearing
+          in the middle of the page. Hidden during initial splash via opacity. */}
+      <BottomTabs hidden={isInitialLoading} />
     </OnboardingProvider>
   );
 }

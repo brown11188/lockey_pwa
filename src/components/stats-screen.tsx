@@ -78,10 +78,6 @@ export function StatsScreen({ initialStats }: StatsScreenProps) {
       .catch(() => {});
   }, []);
 
-  const maxDaily = stats
-    ? Math.max(...stats.dailySpending.map((d) => d.total), 1)
-    : 1;
-
   const totalCategory = stats
     ? stats.categoryBreakdown.reduce((sum, c) => sum + c.total, 0)
     : 0;
@@ -172,39 +168,7 @@ export function StatsScreen({ initialStats }: StatsScreenProps) {
             </div>
           )}
 
-          {/* Bar Chart - Daily Spending */}
-          <div className="mt-6">
-            <h2 className="mb-3 text-sm font-semibold text-gray-400">
-              {t.stats.dailySpending}
-            </h2>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="flex items-end gap-1" style={{ height: "160px" }}>
-                {stats.dailySpending.map((day) => {
-                  const height =
-                    day.total > 0 ? (day.total / maxDaily) * 100 : 0;
-                  return (
-                    <div
-                      key={day.date}
-                      className="flex flex-1 flex-col items-center gap-1"
-                    >
-                      <div
-                        className="w-full rounded-t-md bg-amber-500 transition-all"
-                        style={{
-                          height: `${Math.max(height, 2)}%`,
-                          opacity: day.total > 0 ? 1 : 0.2,
-                        }}
-                      />
-                      <span className="text-[10px] text-gray-500">
-                        {day.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Donut Chart - Category Breakdown */}
+          {/* Category Breakdown */}
           {stats.categoryBreakdown.length > 0 && (
             <div className="mt-6">
               <h2 className="mb-3 text-sm font-semibold text-gray-400">

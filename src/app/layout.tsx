@@ -4,6 +4,7 @@ import "./globals.css";
 import { CurrencyProvider } from "@/lib/currency-context";
 import { LanguageProvider } from "@/lib/language-context";
 import { HtmlLangUpdater } from "@/components/html-lang-updater";
+import { LangCookieScript } from "@/components/lang-cookie-script";
 import AuthProvider from "@/components/auth-provider";
 import { AuthLayout } from "@/components/auth-layout";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -49,11 +50,14 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="vi"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full bg-gray-950 text-white dark:bg-gray-950 dark:text-white">
+      <head>
+        <LangCookieScript />
+      </head>
+      <body className="min-h-full bg-gray-950 text-white">
         <ThemeProvider>
         <PWAProviderLazy>
         <AuthProvider>
