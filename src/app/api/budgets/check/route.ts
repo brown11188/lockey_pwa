@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       .where(
         and(
           eq(entries.userId, user.id),
-          sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`
+          sql`date(${entries.createdAt}) >= ${monthStart} AND date(${entries.createdAt}) <= ${monthEnd}`
         )
       );
 
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       and(
         eq(entries.userId, user.id),
         eq(entries.category, categoryId),
-        sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`
+        sql`date(${entries.createdAt}) >= ${monthStart} AND date(${entries.createdAt}) <= ${monthEnd}`
       )
     );
 

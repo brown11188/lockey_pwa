@@ -36,7 +36,7 @@ export async function GET() {
       .where(
         and(
           eq(entries.userId, user.id),
-          sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`
+          sql`date(${entries.createdAt}) >= ${monthStart} AND date(${entries.createdAt}) <= ${monthEnd}`
         )
       )
       .groupBy(entries.category),

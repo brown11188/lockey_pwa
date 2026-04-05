@@ -22,8 +22,8 @@ export async function GET(req: NextRequest) {
 
   const dateFrom = sp.get("dateFrom");
   const dateTo = sp.get("dateTo");
-  if (dateFrom) conditions.push(sql`(${entries.createdAt})::date >= ${dateFrom}::date`);
-  if (dateTo) conditions.push(sql`(${entries.createdAt})::date <= ${dateTo}::date`);
+  if (dateFrom) conditions.push(sql`date(${entries.createdAt}) >= ${dateFrom}`);
+  if (dateTo) conditions.push(sql`date(${entries.createdAt}) <= ${dateTo}`);
 
   const category = sp.get("category");
   if (category) conditions.push(eq(entries.category, category));

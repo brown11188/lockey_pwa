@@ -42,8 +42,8 @@ export async function GET(req: NextRequest) {
   const prevRange = getMonthRange(prevYear, prevMonth);
 
   const userFilter = eq(entries.userId, user.id);
-  const dateFilter = sql`(${entries.createdAt})::date >= ${start}::date AND (${entries.createdAt})::date <= ${end}::date`;
-  const prevDateFilter = sql`(${entries.createdAt})::date >= ${prevRange.start}::date AND (${entries.createdAt})::date <= ${prevRange.end}::date`;
+  const dateFilter = sql`date(${entries.createdAt}) >= ${start} AND date(${entries.createdAt}) <= ${end}`;
+  const prevDateFilter = sql`date(${entries.createdAt}) >= ${prevRange.start} AND date(${entries.createdAt}) <= ${prevRange.end}`;
 
   // ── Batch 1: dismissed check + total spending (always needed) ──────────────
   const [[dismissed], [totalResult]] = await Promise.all([
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     // Active days
     db
-      .select({ count: sql<number>`COUNT(DISTINCT (${entries.createdAt})::date)` })
+      .select({ count: sql<number>`COUNT(DISTINCT date(${entries.createdAt}))` })
       .from(entries)
       .where(and(userFilter, dateFilter)),
 
@@ -103,12 +103,12 @@ export async function GET(req: NextRequest) {
     // Biggest spending day
     db
       .select({
-        date: sql<string>`((${entries.createdAt})::date)::text`.as("day"),
+        date: sql<string>`date(${entries.createdAt})`.as("day"),
         total: sql<number>`SUM(${entries.amount})`.as("total"),
       })
       .from(entries)
       .where(and(userFilter, dateFilter))
-      .groupBy(sql`(${entries.createdAt})::date`)
+      .groupBy(sql`date(${entries.createdAt})`)
       .orderBy(sql`SUM(${entries.amount}) DESC`)
       .limit(1),
 

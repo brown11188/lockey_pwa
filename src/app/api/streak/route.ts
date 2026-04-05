@@ -124,7 +124,7 @@ export async function POST() {
     db.select({ badgeId: badges.badgeId }).from(badges).where(eq(badges.userId, user.id)),
     db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(eq(entries.userId, user.id)),
     db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(and(eq(entries.userId, user.id), sql`${entries.photoId} IS NOT NULL`)),
-    db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(and(eq(entries.userId, user.id), eq(entries.category, "food"), sql`(${entries.createdAt})::date >= ${monthStart}::date AND (${entries.createdAt})::date <= ${monthEnd}::date`)),
+    db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(and(eq(entries.userId, user.id), eq(entries.category, "food"), sql`date(${entries.createdAt}) >= ${monthStart} AND date(${entries.createdAt}) <= ${monthEnd}`)),
     db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(and(eq(entries.userId, user.id), eq(entries.category, "travel"))),
     db.select({ count: sql<number>`COUNT(*)` }).from(entries).where(and(eq(entries.userId, user.id), eq(entries.category, "entertainment"))),
   ]);

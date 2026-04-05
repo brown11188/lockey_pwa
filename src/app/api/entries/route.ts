@@ -35,13 +35,13 @@ export async function GET(req: NextRequest) {
     const start = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
     const end = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
     conditions.push(
-      sql`(${entries.createdAt})::date >= ${start}::date AND (${entries.createdAt})::date <= ${end}::date`
+      sql`date(${entries.createdAt}) >= ${start} AND date(${entries.createdAt}) <= ${end}`
     );
   } else if (filter === "month") {
     const start = format(startOfMonth(now), "yyyy-MM-dd");
     const end = format(endOfMonth(now), "yyyy-MM-dd");
     conditions.push(
-      sql`(${entries.createdAt})::date >= ${start}::date AND (${entries.createdAt})::date <= ${end}::date`
+      sql`date(${entries.createdAt}) >= ${start} AND date(${entries.createdAt}) <= ${end}`
     );
   }
 
@@ -76,10 +76,10 @@ export async function GET(req: NextRequest) {
   const dateFrom = sp.get("dateFrom");
   const dateTo = sp.get("dateTo");
   if (dateFrom) {
-    conditions.push(sql`(${entries.createdAt})::date >= ${dateFrom}::date`);
+    conditions.push(sql`date(${entries.createdAt}) >= ${dateFrom}`);
   }
   if (dateTo) {
-    conditions.push(sql`(${entries.createdAt})::date <= ${dateTo}::date`);
+    conditions.push(sql`date(${entries.createdAt}) <= ${dateTo}`);
   }
 
   const results = await db

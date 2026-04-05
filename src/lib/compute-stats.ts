@@ -38,7 +38,7 @@ export async function computeStats(
   const periodEnd = isWeekView ? weekEnd : monthEnd;
 
   const dateRange = (start: Date, end: Date) =>
-    sql`(${entries.createdAt})::date >= ${format(start, "yyyy-MM-dd")}::date AND (${entries.createdAt})::date <= ${format(end, "yyyy-MM-dd")}::date`;
+    sql`date(${entries.createdAt}) >= ${format(start, "yyyy-MM-dd")} AND date(${entries.createdAt}) <= ${format(end, "yyyy-MM-dd")}`;
 
   const [
     [weekTotalRow],
@@ -71,13 +71,13 @@ export async function computeStats(
 
     db
       .select({
-        date: sql<string>`((${entries.createdAt})::date)::text`.as("date"),
+        date: sql<string>`date(${entries.createdAt})`.as("date"),
         total: sql<number>`SUM(${entries.amount})`.as("total"),
       })
       .from(entries)
       .where(and(userFilter, dateRange(periodStart, periodEnd)))
-      .groupBy(sql`(${entries.createdAt})::date`)
-      .orderBy(sql`(${entries.createdAt})::date`),
+      .groupBy(sql`date(${entries.createdAt})`)
+      .orderBy(sql`date(${entries.createdAt})`),
 
     db
       .select({
