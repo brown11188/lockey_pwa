@@ -41,19 +41,21 @@ export function QuickAddModal({ open, onClose, onSaved, initialDate }: QuickAddM
   const [budgetWarningToast, setBudgetWarningToast] = useState({ visible: false, message: "" });
   const [milestone, setMilestone] = useState<{ key: "three" | "seven" | "fourteen" | "thirty" | "sixty" | "hundred"; emoji: string; days: number } | null>(null);
   const [animating, setAnimating] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(open);
 
   // Animation control
-  const prevOpenRef = useRef(open);
-  if (open && !prevOpenRef.current) {
-    setVisible(true);
-    requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
-  }
-  if (!open && prevOpenRef.current) {
-    setAnimating(false);
-    setTimeout(() => setVisible(false), 300);
-  }
-  prevOpenRef.current = open;
+  const prevOpenRef = useRef(false);
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      setVisible(true);
+      requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
+    }
+    if (!open && prevOpenRef.current) {
+      setAnimating(false);
+      setTimeout(() => setVisible(false), 300);
+    }
+    prevOpenRef.current = open;
+  }, [open]);
 
   // Seed the date picker whenever the modal opens
   useEffect(() => {
